@@ -1,26 +1,25 @@
-import { Router } from "express";
-import { checkJwt } from "../config/auth";
+import { Router, Request, Response } from "express";
+import authRoutes from "./auth.routes";
+import { checkJwt } from "../middlewares/auth.middlewares";
 
 const router: Router = Router();
 
 // Public routes
-router.get("/", (req, res) => {
-  res.send("API is running");
+router.get("/", (req: Request, res: Response) => {
+  res.send("API is running 🚀");
 });
 
 // Health check endpoint
-router.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK" });
+router.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "OK", message: "Server is running 🚀" });
 });
+
+// Auth routes
+router.use("/auth", authRoutes);
 
 // Protected routes
-router.get("/protected", checkJwt, (req, res) => {
+router.get("/protected", checkJwt, (req: Request, res: Response) => {
   res.send("Protected route");
 });
-
-// Add more routes or import from other files
-// Example:
-// import userRoutes from "./user.routes";
-// router.use("/users", userRoutes);
 
 export default router;

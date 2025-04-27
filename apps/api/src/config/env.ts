@@ -9,7 +9,6 @@ export const config = {
   port: process.env.PORT || 3002,
   isProduction: process.env.NODE_ENV === "production",
   logLevel: process.env.LOG_LEVEL || "info",
-  clientUrl: process.env.CLIENT_URL || "*",
-  audience: process.env.AUDIENCE,
-  issuerBaseURL: process.env.ISSUER_BASE_URL,
+  mongoURI: process.env.MONGO_URI || "",
+  secretKey: process.env.SECRET_KEY || "",
 };

@@ -4,6 +4,10 @@
     "build": {
       "env": ["PORT"],
       "outputs": ["dist/**"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"]
     }
   }
 }

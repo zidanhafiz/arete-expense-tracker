@@ -2,16 +2,12 @@ import express, { Request, Response, NextFunction } from "express";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
-// Import configuration
 import { config } from "./config/env";
 import { logger, morganStream, skipHealthCheck } from "./config/logger";
 import { corsOptions, rateLimiter, helmetConfig } from "./config/middleware";
-
-// Import routes
+import { connectDB } from "./config/db";
 import router from "./routes";
 
-// App initialization
 const app = express();
 const port = config.port;
 
@@ -38,15 +34,18 @@ if (config.isProduction) {
   );
 }
 
-app.use(express.json({ limit: "1mb" })); // Limit payload size
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(rateLimiter); // Apply rate limiting
+app.use(rateLimiter);
 
 // Trust proxy if behind reverse proxy like Nginx
 if (config.isProduction) {
   app.set("trust proxy", 1);
 }
+
+// Connect Database
+connectDB(config.mongoURI);
 
 // Register routes
 app.use(router);
