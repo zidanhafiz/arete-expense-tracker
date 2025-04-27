@@ -1,6 +1,10 @@
 import User from "../models/user.models";
 import { Request, Response } from "express";
-import { loginUserSchema, registerUserSchema } from "../utils/userSchemas";
+import {
+  loginUserSchema,
+  registerUserSchema,
+  updateUserSchema,
+} from "../utils/userSchemas";
 import { logger } from "../config/logger";
 import { z } from "zod";
 import {
@@ -148,11 +152,112 @@ const getUser = async (req: Request, res: Response) => {
   }
 };
 
+const updateUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const { first_name, last_name, nickname, password, avatar } =
+      updateUserSchema.parse(req.body);
+
+    if (!first_name && !last_name && !nickname && !password && !avatar) {
+      res.status(400).json({ message: "At least one field must be provided" });
+      return;
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        first_name: first_name || user?.first_name,
+        last_name: last_name || user?.last_name,
+        nickname: nickname || user?.nickname,
+        password: password || user?.password,
+        avatar: avatar || user?.avatar,
+      },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res
+      .status(200)
+      .json({ message: "User updated successfully", data: updatedUser });
+  } catch (error) {
+    logger.error(`Error updating user: ${error}`);
+    res.status(500).json({ message: "Error updating user", errors: error });
+  }
+};
+
+const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    logger.error(`Error deleting user: ${error}`);
+    res.status(500).json({ message: "Error deleting user", errors: error });
+  }
+};
+
+const uploadAvatar = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const { file } = req;
+
+    if (!file) {
+      res.status(400).json({ message: "No file uploaded" });
+      return;
+    }
+
+    const url = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
+
+    res.status(200).json({
+      message: "Avatar uploaded successfully",
+      data: {
+        avatarUrl: url,
+      },
+    });
+  } catch (error) {
+    logger.error(`Error uploading avatar: ${error}`);
+    res.status(500).json({ message: "Error uploading avatar", errors: error });
+  }
+};
+
 const userController = {
   registerUser,
   loginUser,
-  getUser,
   refreshToken,
+  getUser,
+  updateUser,
+  deleteUser,
+  uploadAvatar,
 };
 
 export default userController;

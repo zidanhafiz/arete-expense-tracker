@@ -7,7 +7,8 @@ import {
   verifyRefreshToken,
 } from "../../utils/authUtils";
 import { logger } from "../../config/logger";
-import { z } from "zod";
+import { Readable } from "stream";
+import { updateUserSchema } from "../../utils/userSchemas";
 
 // Mock dependencies
 jest.mock("../../models/user.models");
@@ -31,6 +32,7 @@ describe("User Controller", () => {
       first_name: "John",
       last_name: "Doe",
       nickname: "johndoe",
+      avatar: "http://localhost:3000/uploads/avatar.jpg",
       email: "john@example.com",
       password: "hashedpassword123",
       comparePassword: jest.fn(),
@@ -40,7 +42,21 @@ describe("User Controller", () => {
     // Mock request and response
     mockRequest = {
       body: {},
+      file: {
+        filename: "avatar.jpg",
+        path: "uploads/avatar.jpg",
+        fieldname: "avatar",
+        originalname: "avatar.jpg",
+        encoding: "7bit",
+        mimetype: "image/jpeg",
+        size: 1024,
+        destination: "uploads/",
+        stream: jest.fn() as unknown as Readable,
+        buffer: Buffer.from([]),
+      },
       userId: mockUserId,
+      protocol: "http",
+      get: jest.fn(),
     };
 
     mockResponse = {
@@ -106,18 +122,6 @@ describe("User Controller", () => {
         email: "invalid-email",
         password: "short", // Too short
       };
-
-      const zodError = new z.ZodError([]);
-      // jest.spyOn(z.ZodError.prototype, 'format').mockReturnValue({ _errors: ['Validation error'] });
-      // // Mock the zod schema validation to throw an error
-      // jest.spyOn(z, 'ZodError', 'get').mockImplementation(() => {
-      //   return zodError.constructor as typeof z.ZodError;
-      // });
-
-      // // Mock parse to throw ZodError
-      // jest.spyOn(z.object.prototype, 'parse').mockImplementation(() => {
-      //   throw zodError;
-      // });
 
       // Execute
       await userController.registerUser(
@@ -406,6 +410,214 @@ describe("User Controller", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(404);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "User not found",
+      });
+    });
+  });
+
+  describe("updateUser", () => {
+    it("should update user details successfully", async () => {
+      // Setup
+      mockRequest.userId = mockUserId;
+      mockRequest.body = {
+        first_name: "John Update",
+        last_name: "Doe Update",
+        nickname: "johndoeupdate",
+      };
+
+      const updatedUser = {
+        ...mockUser,
+        first_name: "John Update",
+        last_name: "Doe Update",
+        nickname: "johndoeupdate",
+        password: undefined, // password is removed by select('-password')
+      };
+
+      // Mock schema validation to pass
+      jest.spyOn(updateUserSchema, "parse").mockReturnValue({
+        first_name: "John Update",
+        last_name: "Doe Update",
+        nickname: "johndoeupdate",
+      });
+
+      (User.findById as jest.Mock).mockResolvedValue(mockUser);
+
+      // Mock the chained select() method
+      const selectMock = jest.fn().mockReturnValue(updatedUser);
+      (User.findByIdAndUpdate as jest.Mock).mockReturnValue({
+        select: selectMock,
+      });
+
+      // Execute
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(User.findByIdAndUpdate).toHaveBeenCalledWith(
+        mockUserId,
+        {
+          first_name: "John Update",
+          last_name: "Doe Update",
+          nickname: "johndoeupdate",
+          password: mockUser.password,
+          avatar: mockUser.avatar,
+        },
+        { new: true }
+      );
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "User updated successfully",
+        data: updatedUser,
+      });
+    });
+
+    it("should return error when userId is not provided", async () => {
+      // Setup
+      mockRequest.userId = undefined;
+
+      // Execute
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Unauthorized",
+      });
+    });
+
+    it("should return error when user not found", async () => {
+      // Setup
+      mockRequest.userId = mockUserId;
+      mockRequest.body = {
+        first_name: "John Update",
+      };
+
+      (User.findById as jest.Mock).mockResolvedValue(null);
+
+      // Execute
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "User not found",
+      });
+    });
+  });
+
+  describe("deleteUser", () => {
+    it("should delete user successfully", async () => {
+      // Setup
+      mockRequest.userId = mockUserId;
+
+      (User.findByIdAndDelete as jest.Mock).mockResolvedValue(mockUser);
+
+      // Execute
+      await userController.deleteUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(User.findByIdAndDelete).toHaveBeenCalledWith(mockUserId);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "User deleted successfully",
+      });
+    });
+
+    it("should return error when userId is not provided", async () => {
+      // Setup
+      mockRequest.userId = undefined;
+
+      // Execute
+      await userController.deleteUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Unauthorized",
+      });
+    });
+  });
+
+  describe("uploadAvatar", () => {
+    it("should upload avatar successfully", async () => {
+      // Setup
+      mockRequest.userId = mockUserId;
+      mockRequest.file = {
+        filename: "avatar.jpg",
+        path: "uploads/avatar.jpg",
+        fieldname: "avatar",
+        originalname: "avatar.jpg",
+        encoding: "7bit",
+        mimetype: "image/jpeg",
+        size: 1024,
+        destination: "uploads/",
+        stream: jest.fn() as unknown as Readable,
+        buffer: Buffer.from([]),
+      };
+      mockRequest.get = jest.fn().mockReturnValue("localhost:3000");
+
+      // Execute
+      await userController.uploadAvatar(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(mockRequest.get).toHaveBeenCalledWith("host");
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Avatar uploaded successfully",
+        data: {
+          avatarUrl: "http://localhost:3000/uploads/avatar.jpg",
+        },
+      });
+    });
+
+    it("should return error when userId is not provided", async () => {
+      // Setup
+      mockRequest.userId = undefined;
+
+      // Execute
+      await userController.uploadAvatar(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Unauthorized",
+      });
+    });
+
+    it("should return error when no file is uploaded", async () => {
+      // Setup
+      mockRequest.userId = mockUserId;
+      mockRequest.file = undefined;
+
+      // Execute
+      await userController.uploadAvatar(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "No file uploaded",
       });
     });
   });

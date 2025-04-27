@@ -50,3 +50,37 @@ export const loginUserSchema = z.object({
 });
 
 export type LoginUserSchema = z.infer<typeof loginUserSchema>;
+
+export const updateUserSchema = z.object({
+  first_name: z
+    .string()
+    .min(3, { message: "First name must be at least 3 characters long" })
+    .max(100, {
+      message: "First name must be less than 100 characters long",
+    })
+    .optional(),
+  last_name: z
+    .string()
+    .min(3, { message: "Last name must be at least 3 characters long" })
+    .max(100, {
+      message: "Last name must be less than 100 characters long",
+    })
+    .optional(),
+  nickname: z
+    .string()
+    .min(3, { message: "Nickname must be at least 3 characters long" })
+    .max(100, {
+      message: "Nickname must be less than 100 characters long",
+    })
+    .optional(),
+  avatar: z.string().optional(),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters long" })
+    .max(100, {
+      message: "Password must be less than 100 characters long",
+    })
+    .optional(),
+});
+
+export type UpdateUserSchema = z.infer<typeof updateUserSchema>;

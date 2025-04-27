@@ -1,6 +1,9 @@
 import { Router, Request, Response } from "express";
-import authRoutes from "./auth.routes";
 import { checkJwt } from "../middlewares/auth.middlewares";
+import authRoutes from "./auth.routes";
+import userRoutes from "./user.routes";
+import path from "path";
+import express from "express";
 
 const router: Router = Router();
 
@@ -16,6 +19,12 @@ router.get("/health", (req: Request, res: Response) => {
 
 // Auth routes
 router.use("/auth", authRoutes);
+
+// User routes
+router.use("/api/users", checkJwt, userRoutes);
+
+// Serve static files from uploads folder
+router.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Protected routes
 router.get("/protected", checkJwt, (req: Request, res: Response) => {
