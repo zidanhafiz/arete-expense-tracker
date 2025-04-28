@@ -1,10 +1,7 @@
 import { Response } from "express";
 import mongoose from "mongoose";
 
-export const handleMongooseError = (
-  error: any,
-  res: Response,
-) => {
+export const handleMongooseError = (error: any, res: Response) => {
   if (error instanceof mongoose.Error.DocumentNotFoundError) {
     res.status(404).json({
       message: "Not Found",

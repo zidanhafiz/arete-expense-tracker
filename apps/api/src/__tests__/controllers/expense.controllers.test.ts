@@ -73,7 +73,10 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(Category.findOne).toHaveBeenCalledWith({ _id: mockExpense.category, user: mockUserId });
+      expect(Category.findOne).toHaveBeenCalledWith({
+        _id: mockExpense.category,
+        user: mockUserId,
+      });
       expect(Expense.create).toHaveBeenCalledWith({
         user: mockUserId,
         icon: mockExpense.icon,
@@ -142,9 +145,14 @@ describe("Expense Controller", () => {
         mockRequest as Request,
         mockResponse as Response
       );
-      expect(Category.findOne).toHaveBeenCalledWith({ _id: "nonexistentId", user: mockUserId });
+      expect(Category.findOne).toHaveBeenCalledWith({
+        _id: "nonexistentId",
+        user: mockUserId,
+      });
       expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: "Category not found" });
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Category not found",
+      });
       expect(Expense.create).not.toHaveBeenCalled();
     });
   });
@@ -176,6 +184,7 @@ describe("Expense Controller", () => {
         page: 1,
         limit: 10,
         total: expensesArray.length,
+        totalPages: 1,
         expenses: expensesArray,
       });
     });
@@ -197,8 +206,14 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(Category.findOne).toHaveBeenCalledWith({ name: mockExpense.category, user: mockUserId });
-      expect(Expense.find).toHaveBeenCalledWith({ user: mockUserId, category: mockExpense.category });
+      expect(Category.findOne).toHaveBeenCalledWith({
+        name: mockExpense.category,
+        user: mockUserId,
+      });
+      expect(Expense.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        category: mockExpense.category,
+      });
       expect(populateMock).toHaveBeenCalledWith("category", "icon name");
       expect(skipMock).toHaveBeenCalledWith(0);
       expect(limitMock).toHaveBeenCalledWith(10);
@@ -208,6 +223,7 @@ describe("Expense Controller", () => {
         page: Number(mockRequest.query.page) || 1,
         limit: Number(mockRequest.query.limit) || 10,
         total: expensesArray.length,
+        totalPages: 1,
         expenses: expensesArray,
       });
     });
@@ -220,7 +236,10 @@ describe("Expense Controller", () => {
         mockRequest as Request,
         mockResponse as Response
       );
-      expect(Category.findOne).toHaveBeenCalledWith({ name: "NonExist", user: mockUserId });
+      expect(Category.findOne).toHaveBeenCalledWith({
+        name: "NonExist",
+        user: mockUserId,
+      });
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Expenses listed successfully",
@@ -331,23 +350,35 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(Category.findOne).toHaveBeenCalledWith({ _id: updateBody.category_id, user: mockUserId });
+      expect(Category.findOne).toHaveBeenCalledWith({
+        _id: updateBody.category_id,
+        user: mockUserId,
+      });
       expect(Expense.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: mockExpense._id, user: mockUserId },
-        { icon: updateBody.icon, name: updateBody.name, description: updateBody.description, amount: updateBody.amount, category: mockExpense.category },
-        { new: true }
-      );
-      expect(mockResponse.status).toHaveBeenCalledWith(200);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "Expense updated successfully",
-        expense: { ...mockExpense, ...{
+        {
           icon: updateBody.icon,
           name: updateBody.name,
           description: updateBody.description,
           amount: updateBody.amount,
           category: mockExpense.category,
-          category_id: updateBody.category_id,
-        } },
+        },
+        { new: true }
+      );
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Expense updated successfully",
+        expense: {
+          ...mockExpense,
+          ...{
+            icon: updateBody.icon,
+            name: updateBody.name,
+            description: updateBody.description,
+            amount: updateBody.amount,
+            category: mockExpense.category,
+            category_id: updateBody.category_id,
+          },
+        },
       });
     });
 
@@ -432,9 +463,14 @@ describe("Expense Controller", () => {
         mockRequest as Request,
         mockResponse as Response
       );
-      expect(Category.findOne).toHaveBeenCalledWith({ _id: "nonexistentId", user: mockUserId });
+      expect(Category.findOne).toHaveBeenCalledWith({
+        _id: "nonexistentId",
+        user: mockUserId,
+      });
       expect(mockResponse.status).toHaveBeenCalledWith(404);
-      expect(mockResponse.json).toHaveBeenCalledWith({ message: "Category not found" });
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Category not found",
+      });
       expect(Expense.findOneAndUpdate).not.toHaveBeenCalled();
     });
   });
