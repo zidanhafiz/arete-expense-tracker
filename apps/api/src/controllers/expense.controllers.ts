@@ -8,6 +8,7 @@ import { logger } from "../config/logger";
 import { ZodError } from "zod";
 import Category from "../models/category.models";
 import mongoose from "mongoose";
+import { handleMongooseError } from "../utils/mongooseErrorUtils";
 
 const createExpense = async (req: Request, res: Response) => {
   try {
@@ -46,8 +47,8 @@ const createExpense = async (req: Request, res: Response) => {
         .json({ message: "Invalid request body", errors: error.errors });
       return;
     }
-
     logger.error(`Error creating expense: ${error}`);
+    handleMongooseError(error, res);
     res.status(500).json({ message: "Error creating expense" });
   }
 };
@@ -92,16 +93,20 @@ const listExpenses = async (req: Request, res: Response) => {
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));
 
+    const totalPages = Math.ceil(expenses.length / Number(limit));
+
     logger.info(`Expenses listed: ${expenses.length} by user: ${userId}`);
     res.status(200).json({
       message: "Expenses listed successfully",
       page: Number(page),
       limit: Number(limit),
       total: expenses.length,
+      totalPages,
       expenses,
     });
   } catch (error) {
     logger.error(`Error listing expenses: ${error}`);
+    handleMongooseError(error, res);
     res.status(500).json({ message: "Error listing expenses" });
   }
 };
@@ -129,6 +134,7 @@ const getExpenseById = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error(`Error getting expense: ${error}`);
+    handleMongooseError(error, res);
     res.status(500).json({ message: "Error getting expense" });
   }
 };
@@ -177,6 +183,7 @@ const updateExpenseById = async (req: Request, res: Response) => {
       return;
     }
     logger.error(`Error updating expense: ${error}`);
+    handleMongooseError(error, res);
     res.status(500).json({ message: "Error updating expense" });
   }
 };
@@ -201,14 +208,17 @@ const deleteExpenseById = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Expense deleted successfully" });
   } catch (error) {
     logger.error(`Error deleting expense: ${error}`);
+    handleMongooseError(error, res);
     res.status(500).json({ message: "Error deleting expense" });
   }
 };
 
-export default {
+const expenseController = {
   createExpense,
   listExpenses,
   getExpenseById,
   updateExpenseById,
   deleteExpenseById,
 };
+
+export default expenseController;

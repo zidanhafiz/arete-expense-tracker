@@ -5,6 +5,7 @@ import userRoutes from "./user.routes";
 import path from "path";
 import express from "express";
 import expenseRoutes from "./expense.routes";
+import categoryRoutes from "./category.routes";
 
 const router: Router = Router();
 
@@ -24,10 +25,16 @@ router.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 // Auth routes
 router.use("/auth", authRoutes);
 
+// Protect routes
+router.use("/api", checkJwt);
+
 // User routes
-router.use("/api/users", checkJwt, userRoutes);
+router.use("/api/users", userRoutes);
 
 // Expense routes
-router.use("/api/expenses", checkJwt, expenseRoutes);
+router.use("/api/expenses", expenseRoutes);
+
+// Category routes
+router.use("/api/categories", categoryRoutes);
 
 export default router;
