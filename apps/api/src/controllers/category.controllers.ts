@@ -4,9 +4,8 @@ import {
 } from "../utils/categerySchemas";
 import Category from "../models/category.models";
 import { Request, Response } from "express";
-import { ZodError } from "zod";
 import { logger } from "../config/logger";
-import { handleMongooseError } from "../utils/mongooseErrorUtils";
+import { handleError } from "../utils/errorHandling";
 
 const createCategory = async (req: Request, res: Response) => {
   try {
@@ -21,17 +20,8 @@ const createCategory = async (req: Request, res: Response) => {
       category,
     });
   } catch (error) {
-    if (error instanceof ZodError) {
-      logger.error(`Error creating category: ${error.message}`);
-      res.status(400).json({
-        message: "Invalid request body",
-        errors: error.errors,
-      });
-      return;
-    }
     logger.error(`Error creating category: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Internal server error" });
+    handleError(error, res);
   }
 };
 
@@ -65,8 +55,7 @@ const listCategories = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error(`Error fetching categories: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error fetching categories" });
+    handleError(error, res);
   }
 };
 
@@ -89,8 +78,7 @@ const getCategoryById = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error(`Error fetching category: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error fetching category" });
+    handleError(error, res);
   }
 };
 
@@ -117,17 +105,8 @@ const updateCategoryById = async (req: Request, res: Response) => {
       category,
     });
   } catch (error) {
-    if (error instanceof ZodError) {
-      logger.error(`Error updating category: ${error.message}`);
-      res.status(400).json({
-        message: "Invalid request body",
-        errors: error.errors,
-      });
-      return;
-    }
     logger.error(`Error updating category: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Internal server error" });
+    handleError(error, res);
   }
 };
 
@@ -147,8 +126,7 @@ const deleteCategoryById = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Category deleted successfully" });
   } catch (error) {
     logger.error(`Error deleting category: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error deleting category" });
+    handleError(error, res);
   }
 };
 

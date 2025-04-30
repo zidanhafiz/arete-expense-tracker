@@ -6,9 +6,10 @@ import {
 } from "../utils/expenseSchemas";
 import { logger } from "../config/logger";
 import { ZodError } from "zod";
-import Category from "../models/category.models";
+import Category, { CategoryDoc } from "../models/category.models";
 import mongoose from "mongoose";
-import { handleMongooseError } from "../utils/mongooseErrorUtils";
+import { handleError } from "../utils/errorHandling";
+import ExcelJS from "exceljs";
 
 const createExpense = async (req: Request, res: Response) => {
   try {
@@ -40,16 +41,8 @@ const createExpense = async (req: Request, res: Response) => {
     logger.info(`Expense created: ${expense.id} by user: ${userId}`);
     res.status(201).json({ message: "Expense created successfully", expense });
   } catch (error) {
-    if (error instanceof ZodError) {
-      logger.error(`Error creating expense: ${error.message}`);
-      res
-        .status(400)
-        .json({ message: "Invalid request body", errors: error.errors });
-      return;
-    }
     logger.error(`Error creating expense: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error creating expense" });
+    handleError(error, res);
   }
 };
 
@@ -106,8 +99,7 @@ const listExpenses = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error(`Error listing expenses: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error listing expenses" });
+    handleError(error, res);
   }
 };
 
@@ -134,8 +126,7 @@ const getExpenseById = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error(`Error getting expense: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error getting expense" });
+    handleError(error, res);
   }
 };
 
@@ -175,16 +166,8 @@ const updateExpenseById = async (req: Request, res: Response) => {
       expense,
     });
   } catch (error) {
-    if (error instanceof ZodError) {
-      logger.error(`Error updating expense: ${error.message}`);
-      res
-        .status(400)
-        .json({ message: "Invalid request body", errors: error.errors });
-      return;
-    }
     logger.error(`Error updating expense: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error updating expense" });
+    handleError(error, res);
   }
 };
 
@@ -208,8 +191,53 @@ const deleteExpenseById = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Expense deleted successfully" });
   } catch (error) {
     logger.error(`Error deleting expense: ${error}`);
-    handleMongooseError(error, res);
-    res.status(500).json({ message: "Error deleting expense" });
+    handleError(error, res);
+  }
+};
+
+const downloadExcel = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    const { fromDate, toDate } = req.query;
+
+    const filter: any = { user: userId };
+
+    if (fromDate || toDate) {
+      filter.created_at = {};
+      if (fromDate) filter.created_at.$gte = fromDate;
+      if (toDate) filter.created_at.$lte = toDate;
+    }
+
+    const expenses = await Expense.find(filter).populate(
+      "category",
+      "name icon"
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Expenses");
+
+    worksheet.addRow(["Date", "Name", "Amount", "Category", "Description"]);
+    expenses.forEach((expense) => {
+      worksheet.addRow([
+        expense.created_at,
+        expense.name,
+        expense.amount,
+        (expense.category as unknown as CategoryDoc)?.name || "Uncategorized",
+        expense.description,
+      ]);
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=expenses.xlsx");
+
+    await workbook.xlsx.write(res);
+  } catch (error) {
+    logger.error(`Error downloading excel: ${error}`);
+    handleError(error, res);
   }
 };
 
@@ -219,6 +247,7 @@ const expenseController = {
   getExpenseById,
   updateExpenseById,
   deleteExpenseById,
+  downloadExcel,
 };
 
 export default expenseController;

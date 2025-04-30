@@ -3,6 +3,8 @@ import expenseController from "../controllers/expense.controllers";
 
 const expenseRouter: Router = Router();
 
+expenseRouter.get("/downloadExcel", expenseController.downloadExcel);
+
 expenseRouter
   .route("/")
   .get(expenseController.listExpenses)

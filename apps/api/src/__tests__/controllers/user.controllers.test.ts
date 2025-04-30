@@ -155,10 +155,9 @@ describe("User Controller", () => {
       );
 
       // Assert
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "Error registering user",
-        errors: serverError,
+        message: serverError.message,
       });
       expect(logger.error).toHaveBeenCalled();
     });

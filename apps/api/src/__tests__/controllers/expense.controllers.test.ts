@@ -104,7 +104,7 @@ describe("Expense Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Invalid request body",
-          errors: expect.any(Array),
+          errors: expect.any(Object)
         })
       );
       expect(Expense.create).not.toHaveBeenCalled();
@@ -125,9 +125,9 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "Error creating expense",
+        message: "DB error",
       });
     });
 
@@ -260,9 +260,9 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "Error listing expenses",
+        message: "DB error",
       });
     });
   });
@@ -322,9 +322,9 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "Error getting expense",
+        message: "DB error",
       });
     });
   });
@@ -416,7 +416,7 @@ describe("Expense Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Invalid request body",
-          errors: expect.any(Array),
+          errors: expect.any(Object)
         })
       );
       expect(Expense.findOneAndUpdate).not.toHaveBeenCalled();
@@ -441,9 +441,9 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "Error updating expense",
+        message: "DB error",
       });
     });
 
@@ -521,9 +521,131 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "Error deleting expense",
+        message: "DB error",
+      });
+    });
+  });
+
+  describe("downloadExcel", () => {
+    it("should generate and download expenses Excel file", async () => {
+      // Mock expenses data
+      const expensesArray = [
+        {
+          _id: "expense1",
+          user: mockUserId,
+          name: "Test Expense",
+          description: "Description",
+          amount: 100,
+          created_at: new Date(),
+          category: {
+            name: "Food",
+            icon: "🍔"
+          }
+        }
+      ];
+      
+      // Setup mock for Expense.find().populate()
+      const populateMock = jest.fn().mockResolvedValue(expensesArray);
+      (Expense.find as jest.Mock).mockReturnValue({
+        populate: populateMock
+      });
+      
+      // Create a mock response that supports streaming
+      const mockWritableResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        setHeader: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn(),
+      };
+      
+      // Mock ExcelJS by replacing the write method
+      jest.mock("exceljs", () => ({
+        Workbook: jest.fn().mockImplementation(() => ({
+          addWorksheet: jest.fn().mockReturnValue({
+            addRow: jest.fn()
+          }),
+          xlsx: {
+            write: jest.fn().mockImplementation(res => {
+              res.end();
+              return Promise.resolve();
+            })
+          }
+        }))
+      }), { virtual: true });
+      
+      await expenseController.downloadExcel(
+        mockRequest as Request,
+        mockWritableResponse as any
+      );
+      
+      expect(Expense.find).toHaveBeenCalledWith({ user: mockUserId });
+      expect(populateMock).toHaveBeenCalledWith("category", "name icon");
+      expect(mockWritableResponse.setHeader).toHaveBeenCalledWith(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      expect(mockWritableResponse.setHeader).toHaveBeenCalledWith(
+        "Content-Disposition",
+        "attachment; filename=expenses.xlsx"
+      );
+    });
+    
+    it("should handle date range filters", async () => {
+      mockRequest.query = {
+        fromDate: "2023-01-01",
+        toDate: "2023-12-31"
+      };
+      
+      const populateMock = jest.fn().mockResolvedValue([]);
+      (Expense.find as jest.Mock).mockReturnValue({
+        populate: populateMock
+      });
+      
+      // Create a mock response that supports streaming
+      const mockWritableResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        setHeader: jest.fn(),
+        write: jest.fn(),
+        end: jest.fn(),
+      };
+      
+      await expenseController.downloadExcel(
+        mockRequest as Request,
+        mockWritableResponse as any
+      );
+      
+      expect(Expense.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        created_at: {
+          $gte: "2023-01-01",
+          $lte: "2023-12-31"
+        }
+      });
+    });
+    
+    it("should handle errors properly", async () => {
+      (Expense.find as jest.Mock).mockImplementation(() => {
+        throw new Error("Database error");
+      });
+      
+      // Create a response mock for error case
+      const mockErrorResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      };
+      
+      await expenseController.downloadExcel(
+        mockRequest as Request,
+        mockErrorResponse as any
+      );
+      
+      expect(mockErrorResponse.status).toHaveBeenCalledWith(400);
+      expect(mockErrorResponse.json).toHaveBeenCalledWith({
+        message: "Database error"
       });
     });
   });

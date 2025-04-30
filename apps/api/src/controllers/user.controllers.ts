@@ -6,12 +6,12 @@ import {
   updateUserSchema,
 } from "../utils/userSchemas";
 import { logger } from "../config/logger";
-import { z } from "zod";
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
 } from "../utils/authUtils";
+import { handleError } from "../utils/errorHandling";
 
 const registerUser = async (req: Request, res: Response) => {
   try {
@@ -40,17 +40,8 @@ const registerUser = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      logger.error(`Error registering user: ${error.name}`);
-      res
-        .status(400)
-        .json({ message: "Invalid request data", errors: error.format() });
-      return;
-    }
-
     logger.error(`Error registering user: ${error}`);
-    res.status(500).json({ message: "Error registering user", errors: error });
-    return;
+    handleError(error, res);
   }
 };
 
@@ -81,15 +72,8 @@ const loginUser = async (req: Request, res: Response) => {
       data: { accessToken, refreshToken },
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      logger.error(`Error logging in user: ${error.name}`);
-      res
-        .status(400)
-        .json({ message: "Invalid request data", errors: error.format() });
-      return;
-    }
     logger.error(`Error logging in user: ${error}`);
-    res.status(500).json({ message: "Error logging in user", errors: error });
+    handleError(error, res);
   }
 };
 
@@ -125,7 +109,7 @@ const refreshToken = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error(`Error refreshing token: ${error}`);
-    res.status(500).json({ message: "Error refreshing token", errors: error });
+    handleError(error, res);
   }
 };
 
@@ -148,7 +132,7 @@ const getUser = async (req: Request, res: Response) => {
     res.status(200).json({ message: "User fetched successfully", data: user });
   } catch (error) {
     logger.error(`Error getting user: ${error}`);
-    res.status(500).json({ message: "Error getting user", errors: error });
+    handleError(error, res);
   }
 };
 
@@ -198,7 +182,7 @@ const updateUser = async (req: Request, res: Response) => {
       .json({ message: "User updated successfully", data: updatedUser });
   } catch (error) {
     logger.error(`Error updating user: ${error}`);
-    res.status(500).json({ message: "Error updating user", errors: error });
+    handleError(error, res);
   }
 };
 
@@ -216,7 +200,7 @@ const deleteUser = async (req: Request, res: Response) => {
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     logger.error(`Error deleting user: ${error}`);
-    res.status(500).json({ message: "Error deleting user", errors: error });
+    handleError(error, res);
   }
 };
 
@@ -246,7 +230,7 @@ const uploadAvatar = async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error(`Error uploading avatar: ${error}`);
-    res.status(500).json({ message: "Error uploading avatar", errors: error });
+    handleError(error, res);
   }
 };
 
