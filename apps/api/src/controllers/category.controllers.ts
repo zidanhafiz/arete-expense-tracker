@@ -1,7 +1,7 @@
 import {
   createCategorySchema,
   updateCategorySchema,
-} from "../utils/categerySchemas";
+} from "../utils/categorySchemas";
 import Category from "../models/category.models";
 import { Request, Response } from "express";
 import { logger } from "../config/logger";
