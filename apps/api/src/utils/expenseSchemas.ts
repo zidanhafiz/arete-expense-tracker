@@ -18,6 +18,7 @@ export const createExpenseSchema = z.object({
     .string()
     .min(1, { message: "Category is required" })
     .max(100, { message: "Category must be less than 100 characters" }),
+  date: z.string().min(1, { message: "Date is required" }),
 });
 
 export const updateExpenseSchema = z.object({
@@ -38,4 +39,5 @@ export const updateExpenseSchema = z.object({
     .string()
     .min(1, { message: "Category is required" })
     .max(100, { message: "Category must be less than 100 characters" }),
+  date: z.string().min(1, { message: "Date is required" }),
 });

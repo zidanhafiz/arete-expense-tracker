@@ -1,33 +1,32 @@
 import { Model, Schema, Types, model } from "mongoose";
 
-type IExpense = {
+type IIncome = {
   user: Types.ObjectId;
   icon: string;
   name: string;
   description: string;
   amount: number;
-  category: Types.ObjectId;
+  source: Types.ObjectId;
   date: Date;
 };
 
-type IExpenseMethods = {};
+type IIncomeMethods = {};
 
-type ExpenseModel = Model<IExpense, {}, IExpenseMethods>;
+type IncomeModel = Model<IIncome, {}, IIncomeMethods>;
 
-// Expense schema
-const expenseSchema = new Schema<IExpense, ExpenseModel, IExpenseMethods>(
+const incomeSchema = new Schema<IIncome, IncomeModel, IIncomeMethods>(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     icon: { type: String, required: true },
     name: { type: String, required: true },
     description: { type: String, required: true },
     amount: { type: Number, required: true },
-    category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
+    source: { type: Schema.Types.ObjectId, ref: "Source", required: true },
     date: { type: Date, required: true },
   },
   { timestamps: true }
 );
 
-const Expense = model<IExpense, ExpenseModel>("Expense", expenseSchema);
+const Income = model<IIncome, IncomeModel>("Income", incomeSchema);
 
-export default Expense;
+export default Income;

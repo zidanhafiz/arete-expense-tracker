@@ -6,6 +6,8 @@ import path from "path";
 import express from "express";
 import expenseRoutes from "./expense.routes";
 import categoryRoutes from "./category.routes";
+import incomeRoutes from "./income.routes";
+import sourceRoutes from "./source.routes";
 
 const router: Router = Router();
 
@@ -36,5 +38,11 @@ router.use("/api/expenses", expenseRoutes);
 
 // Category routes
 router.use("/api/categories", categoryRoutes);
+
+// Income routes
+router.use("/api/incomes", incomeRoutes);
+
+// Source routes
+router.use("/api/sources", sourceRoutes);
 
 export default router;

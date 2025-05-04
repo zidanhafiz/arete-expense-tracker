@@ -86,7 +86,7 @@ describe("Category Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Invalid request body",
-          errors: expect.any(Object)
+          errors: expect.any(Object),
         })
       );
       expect(Category.create).not.toHaveBeenCalled();

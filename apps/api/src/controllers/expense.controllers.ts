@@ -13,7 +13,7 @@ import ExcelJS from "exceljs";
 
 const createExpense = async (req: Request, res: Response) => {
   try {
-    const { icon, name, description, amount, category_id } =
+    const { icon, name, description, amount, category_id, date } =
       createExpenseSchema.parse(req.body);
 
     const userId = req.userId;
@@ -36,6 +36,7 @@ const createExpense = async (req: Request, res: Response) => {
       description,
       amount,
       category: category._id,
+      date,
     });
 
     logger.info(`Expense created: ${expense.id} by user: ${userId}`);
@@ -134,7 +135,7 @@ const updateExpenseById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
-    const { icon, name, description, amount, category_id } =
+    const { icon, name, description, amount, category_id, date } =
       updateExpenseSchema.parse(req.body);
 
     const category = await Category.findOne({
@@ -150,7 +151,7 @@ const updateExpenseById = async (req: Request, res: Response) => {
 
     const expense = await Expense.findOneAndUpdate(
       { _id: id, user: userId },
-      { icon, name, description, amount, category: category._id },
+      { icon, name, description, amount, category: category._id, date },
       { new: true }
     );
 
@@ -204,9 +205,9 @@ const downloadExcel = async (req: Request, res: Response) => {
     const filter: any = { user: userId };
 
     if (fromDate || toDate) {
-      filter.created_at = {};
-      if (fromDate) filter.created_at.$gte = fromDate;
-      if (toDate) filter.created_at.$lte = toDate;
+      filter.date = {};
+      if (fromDate) filter.date.$gte = fromDate;
+      if (toDate) filter.date.$lte = toDate;
     }
 
     const expenses = await Expense.find(filter).populate(
@@ -220,7 +221,7 @@ const downloadExcel = async (req: Request, res: Response) => {
     worksheet.addRow(["Date", "Name", "Amount", "Category", "Description"]);
     expenses.forEach((expense) => {
       worksheet.addRow([
-        expense.created_at,
+        expense.date,
         expense.name,
         expense.amount,
         (expense.category as unknown as CategoryDoc)?.name || "Uncategorized",

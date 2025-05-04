@@ -25,7 +25,8 @@ describe("Expense Controller", () => {
       name: "Lunch",
       description: "Business lunch",
       amount: 20,
-      category: "food",
+      category: "507f1f77bcf86cd799439011",
+      date: "2024-03-20",
       toJSON: function () {
         return this;
       },
@@ -65,6 +66,7 @@ describe("Expense Controller", () => {
         description: mockExpense.description,
         amount: mockExpense.amount,
         category_id: mockExpense.category,
+        date: mockExpense.date,
       };
       (Expense.create as jest.Mock).mockResolvedValue(mockExpense);
 
@@ -84,6 +86,7 @@ describe("Expense Controller", () => {
         description: mockExpense.description,
         amount: mockExpense.amount,
         category: mockExpense.category,
+        date: mockExpense.date,
       });
       expect(mockResponse.status).toHaveBeenCalledWith(201);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -104,7 +107,7 @@ describe("Expense Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Invalid request body",
-          errors: expect.any(Object)
+          errors: expect.any(Object),
         })
       );
       expect(Expense.create).not.toHaveBeenCalled();
@@ -117,7 +120,11 @@ describe("Expense Controller", () => {
         description: mockExpense.description,
         amount: mockExpense.amount,
         category_id: mockExpense.category,
+        date: mockExpense.date,
       };
+      (Category.findOne as jest.Mock).mockResolvedValue({
+        _id: mockExpense.category,
+      });
       (Expense.create as jest.Mock).mockRejectedValue(new Error("DB error"));
 
       await expenseController.createExpense(
@@ -140,6 +147,7 @@ describe("Expense Controller", () => {
         description: mockExpense.description,
         amount: mockExpense.amount,
         category_id: "nonexistentId",
+        date: mockExpense.date,
       };
       await expenseController.createExpense(
         mockRequest as Request,
@@ -190,11 +198,17 @@ describe("Expense Controller", () => {
     });
 
     it("should filter by category name in query", async () => {
-      mockRequest.query = { category: mockExpense.category };
+      const categoryName = "Food";
+      mockRequest.query = { category: categoryName };
       const expensesArray = [mockExpense];
       const populateMock = jest.fn().mockReturnThis();
       const skipMock = jest.fn().mockReturnThis();
       const limitMock = jest.fn().mockResolvedValue(expensesArray);
+      (Category.findOne as jest.Mock).mockResolvedValue({
+        _id: mockExpense.category,
+        name: categoryName,
+        user: mockUserId,
+      });
       (Expense.find as jest.Mock).mockReturnValue({
         populate: populateMock,
         skip: skipMock,
@@ -207,7 +221,7 @@ describe("Expense Controller", () => {
       );
 
       expect(Category.findOne).toHaveBeenCalledWith({
-        name: mockExpense.category,
+        name: categoryName,
         user: mockUserId,
       });
       expect(Expense.find).toHaveBeenCalledWith({
@@ -337,9 +351,13 @@ describe("Expense Controller", () => {
         description: "Team dinner",
         amount: 50,
         category_id: mockExpense.category,
+        date: mockExpense.date,
       };
       mockRequest.body = updateBody;
       mockRequest.params = { id: mockExpense._id };
+      (Category.findOne as jest.Mock).mockResolvedValue({
+        _id: updateBody.category_id,
+      });
       (Expense.findOneAndUpdate as jest.Mock).mockResolvedValue({
         ...mockExpense,
         ...updateBody,
@@ -362,6 +380,7 @@ describe("Expense Controller", () => {
           description: updateBody.description,
           amount: updateBody.amount,
           category: mockExpense.category,
+          date: updateBody.date,
         },
         { new: true }
       );
@@ -377,6 +396,7 @@ describe("Expense Controller", () => {
             amount: updateBody.amount,
             category: mockExpense.category,
             category_id: updateBody.category_id,
+            date: updateBody.date,
           },
         },
       });
@@ -389,8 +409,12 @@ describe("Expense Controller", () => {
         description: mockExpense.description,
         amount: mockExpense.amount,
         category_id: mockExpense.category,
+        date: mockExpense.date,
       };
       mockRequest.params = { id: "notFound" };
+      (Category.findOne as jest.Mock).mockResolvedValue({
+        _id: mockExpense.category,
+      });
       (Expense.findOneAndUpdate as jest.Mock).mockResolvedValue(null);
 
       await expenseController.updateExpenseById(
@@ -416,7 +440,7 @@ describe("Expense Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Invalid request body",
-          errors: expect.any(Object)
+          errors: expect.any(Object),
         })
       );
       expect(Expense.findOneAndUpdate).not.toHaveBeenCalled();
@@ -429,9 +453,13 @@ describe("Expense Controller", () => {
         description: mockExpense.description,
         amount: mockExpense.amount,
         category_id: mockExpense.category,
+        date: mockExpense.date,
       };
       mockRequest.body = updateBody;
       mockRequest.params = { id: mockExpense._id };
+      (Category.findOne as jest.Mock).mockResolvedValue({
+        _id: updateBody.category_id,
+      });
       (Expense.findOneAndUpdate as jest.Mock).mockImplementation(() => {
         throw new Error("DB error");
       });
@@ -456,6 +484,7 @@ describe("Expense Controller", () => {
         description: mockExpense.description,
         amount: mockExpense.amount,
         category_id: "nonexistentId",
+        date: mockExpense.date,
       };
       mockRequest.body = updateBody;
       mockRequest.params = { id: mockExpense._id };
@@ -538,20 +567,20 @@ describe("Expense Controller", () => {
           name: "Test Expense",
           description: "Description",
           amount: 100,
-          created_at: new Date(),
+          date: "2024-03-20",
           category: {
             name: "Food",
-            icon: "🍔"
-          }
-        }
+            icon: "🍔",
+          },
+        },
       ];
-      
+
       // Setup mock for Expense.find().populate()
       const populateMock = jest.fn().mockResolvedValue(expensesArray);
       (Expense.find as jest.Mock).mockReturnValue({
-        populate: populateMock
+        populate: populateMock,
       });
-      
+
       // Create a mock response that supports streaming
       const mockWritableResponse = {
         status: jest.fn().mockReturnThis(),
@@ -560,27 +589,12 @@ describe("Expense Controller", () => {
         write: jest.fn(),
         end: jest.fn(),
       };
-      
-      // Mock ExcelJS by replacing the write method
-      jest.mock("exceljs", () => ({
-        Workbook: jest.fn().mockImplementation(() => ({
-          addWorksheet: jest.fn().mockReturnValue({
-            addRow: jest.fn()
-          }),
-          xlsx: {
-            write: jest.fn().mockImplementation(res => {
-              res.end();
-              return Promise.resolve();
-            })
-          }
-        }))
-      }), { virtual: true });
-      
+
       await expenseController.downloadExcel(
         mockRequest as Request,
         mockWritableResponse as any
       );
-      
+
       expect(Expense.find).toHaveBeenCalledWith({ user: mockUserId });
       expect(populateMock).toHaveBeenCalledWith("category", "name icon");
       expect(mockWritableResponse.setHeader).toHaveBeenCalledWith(
@@ -592,18 +606,18 @@ describe("Expense Controller", () => {
         "attachment; filename=expenses.xlsx"
       );
     });
-    
+
     it("should handle date range filters", async () => {
       mockRequest.query = {
-        fromDate: "2023-01-01",
-        toDate: "2023-12-31"
+        fromDate: "2024-01-01",
+        toDate: "2024-12-31",
       };
-      
+
       const populateMock = jest.fn().mockResolvedValue([]);
       (Expense.find as jest.Mock).mockReturnValue({
-        populate: populateMock
+        populate: populateMock,
       });
-      
+
       // Create a mock response that supports streaming
       const mockWritableResponse = {
         status: jest.fn().mockReturnThis(),
@@ -612,40 +626,35 @@ describe("Expense Controller", () => {
         write: jest.fn(),
         end: jest.fn(),
       };
-      
+
       await expenseController.downloadExcel(
         mockRequest as Request,
         mockWritableResponse as any
       );
-      
+
       expect(Expense.find).toHaveBeenCalledWith({
         user: mockUserId,
-        created_at: {
-          $gte: "2023-01-01",
-          $lte: "2023-12-31"
-        }
+        date: {
+          $gte: "2024-01-01",
+          $lte: "2024-12-31",
+        },
       });
+      expect(populateMock).toHaveBeenCalledWith("category", "name icon");
     });
-    
+
     it("should handle errors properly", async () => {
       (Expense.find as jest.Mock).mockImplementation(() => {
         throw new Error("Database error");
       });
-      
-      // Create a response mock for error case
-      const mockErrorResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-      
+
       await expenseController.downloadExcel(
         mockRequest as Request,
-        mockErrorResponse as any
+        mockResponse as Response
       );
-      
-      expect(mockErrorResponse.status).toHaveBeenCalledWith(400);
-      expect(mockErrorResponse.json).toHaveBeenCalledWith({
-        message: "Database error"
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Database error",
       });
     });
   });
