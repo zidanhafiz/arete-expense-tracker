@@ -33,8 +33,10 @@ describe("User Schemas", () => {
 
       // Assert
       expect(() => registerUserSchema.parse(validData)).not.toThrow();
+      // Get the expected result without avatar since it's not in the schema
+      const { avatar, ...expectedResult } = validData;
       const result = registerUserSchema.parse(validData);
-      expect(result).toEqual(validData);
+      expect(result).toEqual(expectedResult);
     });
 
     it("should reject when first_name is too short", () => {

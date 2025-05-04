@@ -7,6 +7,7 @@ import { logger, morganStream, skipHealthCheck } from "./config/logger";
 import { corsOptions, rateLimiter, helmetConfig } from "./config/middleware";
 import { connectDB } from "./config/db";
 import router from "./routes";
+import { initCloudinary } from "./config/cloudinary";
 
 const app = express();
 const port = config.port;
@@ -14,6 +15,10 @@ const port = config.port;
 // Apply middleware
 app.use(cors(corsOptions));
 app.use(helmetConfig());
+
+// Connect Database & Cloudinary
+connectDB(config.mongoURI);
+initCloudinary();
 
 // Configure Morgan based on environment
 if (config.isProduction) {
@@ -43,9 +48,6 @@ app.use(rateLimiter);
 if (config.isProduction) {
   app.set("trust proxy", 1);
 }
-
-// Connect Database
-connectDB(config.mongoURI);
 
 // Register routes
 app.use(router);

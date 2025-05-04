@@ -12,6 +12,11 @@ import {
   verifyRefreshToken,
 } from "../utils/authUtils";
 import { handleError } from "../utils/errorHandling";
+import {
+  deleteImage,
+  getImageUrl,
+  uploadImage,
+} from "../utils/cloudinaryUtils";
 
 const registerUser = async (req: Request, res: Response) => {
   try {
@@ -129,6 +134,10 @@ const getUser = async (req: Request, res: Response) => {
       return;
     }
 
+    if (user.avatar) {
+      user.avatar = await getImageUrl(user.avatar);
+    }
+
     res.status(200).json({ message: "User fetched successfully", data: user });
   } catch (error) {
     logger.error(`Error getting user: ${error}`);
@@ -145,10 +154,10 @@ const updateUser = async (req: Request, res: Response) => {
       return;
     }
 
-    const { first_name, last_name, nickname, password, avatar } =
+    const { first_name, last_name, nickname, password } =
       updateUserSchema.parse(req.body);
 
-    if (!first_name && !last_name && !nickname && !password && !avatar) {
+    if (!first_name && !last_name && !nickname && !password) {
       res.status(400).json({ message: "At least one field must be provided" });
       return;
     }
@@ -167,7 +176,6 @@ const updateUser = async (req: Request, res: Response) => {
         last_name: last_name || user?.last_name,
         nickname: nickname || user?.nickname,
         password: password || user?.password,
-        avatar: avatar || user?.avatar,
       },
       { new: true }
     ).select("-password");
@@ -195,6 +203,12 @@ const deleteUser = async (req: Request, res: Response) => {
       return;
     }
 
+    const user = await User.findById(userId);
+
+    if (user?.avatar) {
+      await deleteImage(user.avatar);
+    }
+
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({ message: "User deleted successfully" });
@@ -220,14 +234,17 @@ const uploadAvatar = async (req: Request, res: Response) => {
       return;
     }
 
-    const url = `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
+    const userAvatar = await User.findById(userId).select("avatar");
 
-    res.status(200).json({
-      message: "Avatar uploaded successfully",
-      data: {
-        avatarUrl: url,
-      },
-    });
+    if (userAvatar?.avatar) {
+      await deleteImage(userAvatar.avatar);
+    }
+
+    const imageUrl = await uploadImage(file, "avatar");
+
+    await User.findByIdAndUpdate(userId, { avatar: imageUrl });
+
+    res.status(200).json({ message: "Avatar uploaded successfully" });
   } catch (error) {
     logger.error(`Error uploading avatar: ${error}`);
     handleError(error, res);

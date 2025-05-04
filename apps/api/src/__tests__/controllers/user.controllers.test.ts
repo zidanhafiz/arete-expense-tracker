@@ -9,11 +9,13 @@ import {
 import { logger } from "../../config/logger";
 import { Readable } from "stream";
 import { updateUserSchema } from "../../utils/userSchemas";
+import * as cloudinaryUtils from "../../utils/cloudinaryUtils";
 
 // Mock dependencies
 jest.mock("../../models/user.models");
 jest.mock("../../utils/authUtils");
 jest.mock("../../config/logger");
+jest.mock("../../utils/cloudinaryUtils");
 
 describe("User Controller", () => {
   let mockRequest: Partial<Request>;
@@ -32,7 +34,7 @@ describe("User Controller", () => {
       first_name: "John",
       last_name: "Doe",
       nickname: "johndoe",
-      avatar: "http://localhost:3000/uploads/avatar.jpg",
+      avatar: "avatar/avatar123",
       email: "john@example.com",
       password: "hashedpassword123",
       comparePassword: jest.fn(),
@@ -67,10 +69,17 @@ describe("User Controller", () => {
     // Mock User model
     (User.findOne as jest.Mock).mockReset();
     (User.findById as jest.Mock).mockReset();
+    (User.findByIdAndUpdate as jest.Mock).mockReset();
+    (User.findByIdAndDelete as jest.Mock).mockReset();
 
     // Mock token generation functions
     (generateAccessToken as jest.Mock).mockReturnValue("mock-access-token");
     (generateRefreshToken as jest.Mock).mockReturnValue("mock-refresh-token");
+
+    // Mock cloudinaryUtils
+    (cloudinaryUtils.uploadImage as jest.Mock).mockResolvedValue("avatar/newavatar123");
+    (cloudinaryUtils.getImageUrl as jest.Mock).mockResolvedValue("https://res.cloudinary.com/demo/image/upload/avatar/avatar123");
+    (cloudinaryUtils.deleteImage as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe("registerUser", () => {
@@ -349,7 +358,7 @@ describe("User Controller", () => {
       const userWithoutPassword = { ...mockUser };
       delete userWithoutPassword.password;
 
-      const selectMock = jest.fn().mockReturnValue(userWithoutPassword);
+      const selectMock = jest.fn().mockResolvedValue(userWithoutPassword);
       (User.findById as jest.Mock).mockReturnValue({
         select: selectMock,
       });
@@ -363,10 +372,14 @@ describe("User Controller", () => {
       // Assert
       expect(User.findById).toHaveBeenCalledWith(mockUserId);
       expect(selectMock).toHaveBeenCalledWith("-password");
+      expect(cloudinaryUtils.getImageUrl).toHaveBeenCalledWith(mockUser.avatar);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "User fetched successfully",
-        data: userWithoutPassword,
+        data: {
+          ...userWithoutPassword,
+          avatar: "https://res.cloudinary.com/demo/image/upload/avatar/avatar123"
+        }
       });
     });
 
@@ -392,7 +405,7 @@ describe("User Controller", () => {
       // Setup
       mockRequest.userId = mockUserId;
 
-      const selectMock = jest.fn().mockReturnValue(null);
+      const selectMock = jest.fn().mockResolvedValue(null);
       (User.findById as jest.Mock).mockReturnValue({
         select: selectMock,
       });
@@ -441,7 +454,7 @@ describe("User Controller", () => {
       (User.findById as jest.Mock).mockResolvedValue(mockUser);
 
       // Mock the chained select() method
-      const selectMock = jest.fn().mockReturnValue(updatedUser);
+      const selectMock = jest.fn().mockResolvedValue(updatedUser);
       (User.findByIdAndUpdate as jest.Mock).mockReturnValue({
         select: selectMock,
       });
@@ -460,7 +473,6 @@ describe("User Controller", () => {
           last_name: "Doe Update",
           nickname: "johndoeupdate",
           password: mockUser.password,
-          avatar: mockUser.avatar,
         },
         { new: true }
       );
@@ -468,6 +480,29 @@ describe("User Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "User updated successfully",
         data: updatedUser,
+      });
+    });
+
+    it("should return error when no fields are provided", async () => {
+      // Setup
+      mockRequest.userId = mockUserId;
+      mockRequest.body = {};
+
+      // Mock schema validation to pass
+      jest.spyOn(updateUserSchema, "parse").mockReturnValue({});
+
+      // Skip findById call as the controller short-circuits before it
+      
+      // Execute
+      await userController.updateUser(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Assert
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "At least one field must be provided"
       });
     });
 
@@ -495,6 +530,11 @@ describe("User Controller", () => {
         first_name: "John Update",
       };
 
+      // Mock schema validation to pass
+      jest.spyOn(updateUserSchema, "parse").mockReturnValue({
+        first_name: "John Update",
+      });
+
       (User.findById as jest.Mock).mockResolvedValue(null);
 
       // Execute
@@ -516,6 +556,7 @@ describe("User Controller", () => {
       // Setup
       mockRequest.userId = mockUserId;
 
+      (User.findById as jest.Mock).mockResolvedValue(mockUser);
       (User.findByIdAndDelete as jest.Mock).mockResolvedValue(mockUser);
 
       // Execute
@@ -525,6 +566,8 @@ describe("User Controller", () => {
       );
 
       // Assert
+      expect(User.findById).toHaveBeenCalledWith(mockUserId);
+      expect(cloudinaryUtils.deleteImage).toHaveBeenCalledWith(mockUser.avatar);
       expect(User.findByIdAndDelete).toHaveBeenCalledWith(mockUserId);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -566,7 +609,12 @@ describe("User Controller", () => {
         stream: jest.fn() as unknown as Readable,
         buffer: Buffer.from([]),
       };
-      mockRequest.get = jest.fn().mockReturnValue("localhost:3000");
+
+      // Mock User.findById for fetching avatar info
+      const selectMock = jest.fn().mockResolvedValue({ avatar: mockUser.avatar });
+      (User.findById as jest.Mock).mockReturnValue({
+        select: selectMock
+      });
 
       // Execute
       await userController.uploadAvatar(
@@ -575,13 +623,13 @@ describe("User Controller", () => {
       );
 
       // Assert
-      expect(mockRequest.get).toHaveBeenCalledWith("host");
+      expect(selectMock).toHaveBeenCalledWith("avatar");
+      expect(cloudinaryUtils.deleteImage).toHaveBeenCalledWith(mockUser.avatar);
+      expect(cloudinaryUtils.uploadImage).toHaveBeenCalledWith(mockRequest.file, "avatar");
+      expect(User.findByIdAndUpdate).toHaveBeenCalledWith(mockUserId, { avatar: "avatar/newavatar123" });
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Avatar uploaded successfully",
-        data: {
-          avatarUrl: "http://localhost:3000/uploads/avatar.jpg",
-        },
       });
     });
 

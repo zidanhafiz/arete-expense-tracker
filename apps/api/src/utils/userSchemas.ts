@@ -33,7 +33,6 @@ export const registerUserSchema = z
       .max(100, {
         message: "Confirm password must be less than 100 characters long",
       }),
-    avatar: z.string().optional(),
   })
   .refine((data) => data.password === data.confirm_password, {
     path: ["confirm_password"],
@@ -73,7 +72,6 @@ export const updateUserSchema = z.object({
       message: "Nickname must be less than 100 characters long",
     })
     .optional(),
-  avatar: z.string().optional(),
   password: z
     .string()
     .min(8, { message: "Password must be at least 8 characters long" })
