@@ -8,6 +8,7 @@ type IExpense = {
   amount: number;
   category: Types.ObjectId;
   date: Date;
+  images: string[];
 };
 
 type IExpenseMethods = {};
@@ -24,6 +25,7 @@ const expenseSchema = new Schema<IExpense, ExpenseModel, IExpenseMethods>(
     amount: { type: Number, required: true },
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
     date: { type: Date, required: true },
+    images: { type: [String], required: false },
   },
   { timestamps: true }
 );

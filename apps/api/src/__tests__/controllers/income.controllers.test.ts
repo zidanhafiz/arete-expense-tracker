@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 import Income from "../../models/income.models";
 import incomeController from "../../controllers/income.controllers";
 import Source from "../../models/source.models";
+import * as cloudinaryUtils from "../../utils/cloudinaryUtils";
 
 // Mock dependencies
 jest.mock("../../models/income.models");
 jest.mock("../../models/source.models");
 jest.mock("../../config/logger");
+jest.mock("../../utils/cloudinaryUtils");
 
 describe("Income Controller", () => {
   let mockRequest: Partial<Request>;
@@ -25,8 +27,9 @@ describe("Income Controller", () => {
       name: "Salary",
       description: "Monthly salary",
       amount: 5000,
-      date: new Date("2023-01-01"),
-      source: "source1",
+      date: "2024-03-20",
+      source: "507f1f77bcf86cd799439011",
+      images: ["https://res.cloudinary.com/demo/image/upload/v1/avatar/income1.jpg"],
       toJSON: function () {
         return this;
       },
@@ -54,8 +57,12 @@ describe("Income Controller", () => {
     (Source.findOne as jest.Mock).mockResolvedValue({
       _id: mockIncome.source,
       user: mockUserId,
-      name: "Employment",
+      name: "Job",
     });
+
+    // Mock cloudinary functions
+    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue("avatar/income1.jpg");
+    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe("createIncome", () => {
@@ -195,7 +202,7 @@ describe("Income Controller", () => {
     });
 
     it("should filter by source name in query", async () => {
-      mockRequest.query = { source: "Employment" };
+      mockRequest.query = { source: "Job" };
       const incomesArray = [mockIncome];
       const populateMock = jest.fn().mockReturnThis();
       const skipMock = jest.fn().mockReturnThis();
@@ -212,7 +219,7 @@ describe("Income Controller", () => {
       );
 
       expect(Source.findOne).toHaveBeenCalledWith({
-        name: "Employment",
+        name: "Job",
         user: mockUserId,
       });
       expect(Income.find).toHaveBeenCalledWith({
@@ -484,8 +491,11 @@ describe("Income Controller", () => {
   });
 
   describe("deleteIncomeById", () => {
-    it("should delete the income successfully", async () => {
+    it("should delete the income and its images successfully", async () => {
       mockRequest.params = { id: mockIncome._id };
+      
+      // Mock finding the income first to get its images
+      (Income.findOne as jest.Mock).mockResolvedValue(mockIncome);
       (Income.findOneAndDelete as jest.Mock).mockResolvedValue(mockIncome);
 
       await incomeController.deleteIncomeById(
@@ -493,10 +503,62 @@ describe("Income Controller", () => {
         mockResponse as Response
       );
 
+      // Check that we tried to get the public ID
+      expect(cloudinaryUtils.getPublicIdFromUrl).toHaveBeenCalledWith(
+        mockIncome.images[0]
+      );
+      
+      // Check that we tried to delete the image
+      expect(cloudinaryUtils.deleteImageFromCloudinary).toHaveBeenCalledWith(
+        "avatar/income1.jpg"
+      );
+      
       expect(Income.findOneAndDelete).toHaveBeenCalledWith({
         _id: mockIncome._id,
         user: mockUserId,
       });
+      
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Income deleted successfully",
+      });
+    });
+
+    it("should handle image deletion failures gracefully", async () => {
+      mockRequest.params = { id: mockIncome._id };
+      
+      // Mock finding the income with multiple images
+      const incomeWithMultipleImages = {
+        ...mockIncome,
+        images: [
+          "https://res.cloudinary.com/demo/image/upload/v1/avatar/income1.jpg",
+          "https://res.cloudinary.com/demo/image/upload/v1/avatar/income2.jpg"
+        ]
+      };
+      
+      (Income.findOne as jest.Mock).mockResolvedValue(incomeWithMultipleImages);
+      (Income.findOneAndDelete as jest.Mock).mockResolvedValue(mockIncome);
+      
+      // Mock one successful deletion and one failed deletion
+      (cloudinaryUtils.getPublicIdFromUrl as jest.Mock)
+        .mockReturnValueOnce("avatar/income1.jpg")
+        .mockReturnValueOnce("avatar/income2.jpg");
+      
+      (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock)
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("Failed to delete image"));
+
+      await incomeController.deleteIncomeById(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Should still succeed despite one image failing to delete
+      expect(Income.findOneAndDelete).toHaveBeenCalledWith({
+        _id: mockIncome._id,
+        user: mockUserId,
+      });
+      
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Income deleted successfully",
@@ -505,13 +567,15 @@ describe("Income Controller", () => {
 
     it("should return 404 if income not found", async () => {
       mockRequest.params = { id: "notFound" };
-      (Income.findOneAndDelete as jest.Mock).mockResolvedValue(null);
+      (Income.findOne as jest.Mock).mockResolvedValue(null);
 
       await incomeController.deleteIncomeById(
         mockRequest as Request,
         mockResponse as Response
       );
 
+      expect(cloudinaryUtils.deleteImageFromCloudinary).not.toHaveBeenCalled();
+      expect(Income.findOneAndDelete).not.toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(404);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Income not found",
@@ -520,7 +584,9 @@ describe("Income Controller", () => {
 
     it("should handle server error", async () => {
       mockRequest.params = { id: mockIncome._id };
-      (Income.findOneAndDelete as jest.Mock).mockImplementation(() => {
+      
+      // Mock finding the income first to get its images
+      (Income.findOne as jest.Mock).mockImplementation(() => {
         throw new Error("DB error");
       });
 
@@ -548,7 +614,7 @@ describe("Income Controller", () => {
           amount: 5000,
           date: new Date("2023-01-01"),
           source: {
-            name: "Employment",
+            name: "Job",
             icon: "🏢",
           },
         },

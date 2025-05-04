@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 import Expense from "../../models/expense.models";
 import expenseController from "../../controllers/expense.controllers";
 import Category from "../../models/category.models";
+import * as cloudinaryUtils from "../../utils/cloudinaryUtils";
 
 // Mock dependencies
 jest.mock("../../models/expense.models");
 jest.mock("../../models/category.models");
 jest.mock("../../config/logger");
+jest.mock("../../utils/cloudinaryUtils");
 
 describe("Expense Controller", () => {
   let mockRequest: Partial<Request>;
@@ -27,6 +29,7 @@ describe("Expense Controller", () => {
       amount: 20,
       category: "507f1f77bcf86cd799439011",
       date: "2024-03-20",
+      images: ["https://res.cloudinary.com/demo/image/upload/v1/avatar/image1.jpg"],
       toJSON: function () {
         return this;
       },
@@ -56,6 +59,10 @@ describe("Expense Controller", () => {
       user: mockUserId,
       name: mockExpense.category,
     });
+
+    // Mock cloudinary functions
+    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue("avatar/image1.jpg");
+    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe("createExpense", () => {
@@ -505,8 +512,11 @@ describe("Expense Controller", () => {
   });
 
   describe("deleteExpenseById", () => {
-    it("should delete the expense successfully", async () => {
+    it("should delete the expense and its images successfully", async () => {
       mockRequest.params = { id: mockExpense._id };
+      
+      // Mock finding the expense first to get its images
+      (Expense.findOne as jest.Mock).mockResolvedValue(mockExpense);
       (Expense.findOneAndDelete as jest.Mock).mockResolvedValue(mockExpense);
 
       await expenseController.deleteExpenseById(
@@ -514,10 +524,62 @@ describe("Expense Controller", () => {
         mockResponse as Response
       );
 
+      // Check that we tried to get the public ID
+      expect(cloudinaryUtils.getPublicIdFromUrl).toHaveBeenCalledWith(
+        mockExpense.images[0]
+      );
+      
+      // Check that we tried to delete the image
+      expect(cloudinaryUtils.deleteImageFromCloudinary).toHaveBeenCalledWith(
+        "avatar/image1.jpg"
+      );
+      
       expect(Expense.findOneAndDelete).toHaveBeenCalledWith({
         _id: mockExpense._id,
         user: mockUserId,
       });
+      
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Expense deleted successfully",
+      });
+    });
+
+    it("should handle image deletion failures gracefully", async () => {
+      mockRequest.params = { id: mockExpense._id };
+      
+      // Mock finding the expense with multiple images
+      const expenseWithMultipleImages = {
+        ...mockExpense,
+        images: [
+          "https://res.cloudinary.com/demo/image/upload/v1/avatar/image1.jpg",
+          "https://res.cloudinary.com/demo/image/upload/v1/avatar/image2.jpg"
+        ]
+      };
+      
+      (Expense.findOne as jest.Mock).mockResolvedValue(expenseWithMultipleImages);
+      (Expense.findOneAndDelete as jest.Mock).mockResolvedValue(mockExpense);
+      
+      // Mock one successful deletion and one failed deletion
+      (cloudinaryUtils.getPublicIdFromUrl as jest.Mock)
+        .mockReturnValueOnce("avatar/image1.jpg")
+        .mockReturnValueOnce("avatar/image2.jpg");
+      
+      (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock)
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("Failed to delete image"));
+
+      await expenseController.deleteExpenseById(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      // Should still succeed despite one image failing to delete
+      expect(Expense.findOneAndDelete).toHaveBeenCalledWith({
+        _id: mockExpense._id,
+        user: mockUserId,
+      });
+      
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Expense deleted successfully",
@@ -526,13 +588,15 @@ describe("Expense Controller", () => {
 
     it("should return 404 if expense not found", async () => {
       mockRequest.params = { id: "notFound" };
-      (Expense.findOneAndDelete as jest.Mock).mockResolvedValue(null);
+      (Expense.findOne as jest.Mock).mockResolvedValue(null);
 
       await expenseController.deleteExpenseById(
         mockRequest as Request,
         mockResponse as Response
       );
 
+      expect(cloudinaryUtils.deleteImageFromCloudinary).not.toHaveBeenCalled();
+      expect(Expense.findOneAndDelete).not.toHaveBeenCalled();
       expect(mockResponse.status).toHaveBeenCalledWith(404);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Expense not found",
@@ -541,7 +605,9 @@ describe("Expense Controller", () => {
 
     it("should handle server error", async () => {
       mockRequest.params = { id: mockExpense._id };
-      (Expense.findOneAndDelete as jest.Mock).mockImplementation(() => {
+      
+      // Mock finding the expense first to get its images
+      (Expense.findOne as jest.Mock).mockImplementation(() => {
         throw new Error("DB error");
       });
 

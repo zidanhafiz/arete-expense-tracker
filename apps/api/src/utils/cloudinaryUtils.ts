@@ -1,7 +1,10 @@
 import { v2 as cloudinary, UploadApiOptions } from "cloudinary";
 import { logger } from "../config/logger";
 
-export const uploadImage = async (file: Express.Multer.File, dest: string) => {
+export const uploadImagesToCloudinary = async (
+  files: Express.Multer.File[],
+  dest: string
+) => {
   const options: UploadApiOptions = {
     use_filename: true,
     unique_filename: false,
@@ -10,25 +13,20 @@ export const uploadImage = async (file: Express.Multer.File, dest: string) => {
   };
 
   try {
-    const result = await cloudinary.uploader.upload(file.path, options);
-    return result.public_id;
+    const results = await Promise.all(
+      files.map((file) => {
+        const fileStr = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        return cloudinary.uploader.upload(fileStr, options);
+      })
+    );
+    return results.map((result) => result.secure_url);
   } catch (error) {
-    logger.error(`Error uploading image: ${error}`);
+    logger.error(`Error uploading images: ${error}`);
     throw error;
   }
 };
 
-export const getImageUrl = async (publicId: string) => {
-  try {
-    const result = await cloudinary.url(publicId);
-    return result;
-  } catch (error) {
-    logger.error(`Error getting image url: ${error}`);
-    throw error;
-  }
-};
-
-export const deleteImage = async (publicId: string) => {
+export const deleteImageFromCloudinary = async (publicId: string) => {
   try {
     await cloudinary.uploader.destroy(publicId);
   } catch (error) {
@@ -37,8 +35,12 @@ export const deleteImage = async (publicId: string) => {
   }
 };
 
-export const getPublicId = (url: string) => {
+export const getPublicIdFromUrl = (url: string) => {
   const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/);
   const result = match ? match[1] : null;
+  if (result) {
+    // Remove file extension (like .jpg, .png, etc.)
+    return result.replace(/\.[^/.]+$/, "");
+  }
   return result;
 };

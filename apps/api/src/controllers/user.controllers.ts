@@ -13,9 +13,8 @@ import {
 } from "../utils/authUtils";
 import { handleError } from "../utils/errorHandling";
 import {
-  deleteImage,
-  getImageUrl,
-  uploadImage,
+  deleteImageFromCloudinary,
+  getPublicIdFromUrl,
 } from "../utils/cloudinaryUtils";
 
 const registerUser = async (req: Request, res: Response) => {
@@ -134,10 +133,6 @@ const getUser = async (req: Request, res: Response) => {
       return;
     }
 
-    if (user.avatar) {
-      user.avatar = await getImageUrl(user.avatar);
-    }
-
     res.status(200).json({ message: "User fetched successfully", data: user });
   } catch (error) {
     logger.error(`Error getting user: ${error}`);
@@ -154,10 +149,10 @@ const updateUser = async (req: Request, res: Response) => {
       return;
     }
 
-    const { first_name, last_name, nickname, password } =
+    const { first_name, last_name, nickname, password, avatar } =
       updateUserSchema.parse(req.body);
 
-    if (!first_name && !last_name && !nickname && !password) {
+    if (!first_name && !last_name && !nickname && !password && !avatar) {
       res.status(400).json({ message: "At least one field must be provided" });
       return;
     }
@@ -176,6 +171,7 @@ const updateUser = async (req: Request, res: Response) => {
         last_name: last_name || user?.last_name,
         nickname: nickname || user?.nickname,
         password: password || user?.password,
+        avatar: avatar || user?.avatar,
       },
       { new: true }
     ).select("-password");
@@ -205,8 +201,16 @@ const deleteUser = async (req: Request, res: Response) => {
 
     const user = await User.findById(userId);
 
-    if (user?.avatar) {
-      await deleteImage(user.avatar);
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    if (user.avatar) {
+      const publicId = getPublicIdFromUrl(user.avatar);
+      if (publicId) {
+        await deleteImageFromCloudinary(publicId);
+      }
     }
 
     await User.findByIdAndDelete(userId);
@@ -218,39 +222,6 @@ const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
-const uploadAvatar = async (req: Request, res: Response) => {
-  try {
-    const userId = req.userId;
-
-    if (!userId) {
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
-
-    const { file } = req;
-
-    if (!file) {
-      res.status(400).json({ message: "No file uploaded" });
-      return;
-    }
-
-    const userAvatar = await User.findById(userId).select("avatar");
-
-    if (userAvatar?.avatar) {
-      await deleteImage(userAvatar.avatar);
-    }
-
-    const imageUrl = await uploadImage(file, "avatar");
-
-    await User.findByIdAndUpdate(userId, { avatar: imageUrl });
-
-    res.status(200).json({ message: "Avatar uploaded successfully" });
-  } catch (error) {
-    logger.error(`Error uploading avatar: ${error}`);
-    handleError(error, res);
-  }
-};
-
 const userController = {
   registerUser,
   loginUser,
@@ -258,7 +229,6 @@ const userController = {
   getUser,
   updateUser,
   deleteUser,
-  uploadAvatar,
 };
 
 export default userController;

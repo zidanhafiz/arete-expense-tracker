@@ -7,12 +7,16 @@ import Source from "../models/source.models";
 import mongoose from "mongoose";
 import { SourceDoc } from "../models/source.models";
 import ExcelJS from "exceljs";
+import {
+  deleteImageFromCloudinary,
+  getPublicIdFromUrl,
+} from "../utils/cloudinaryUtils";
 
 const createIncome = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
 
-    const { icon, name, amount, date, description, source_id } =
+    const { icon, name, amount, date, description, source_id, images } =
       createIncomeSchema.parse(req.body);
 
     const source = await Source.findOne({
@@ -36,6 +40,7 @@ const createIncome = async (req: Request, res: Response) => {
       date: dateObj,
       description,
       source: source._id,
+      images,
     });
 
     logger.info(`Income created: ${income.id} by user: ${userId}`);
@@ -134,7 +139,7 @@ const updateIncomeById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.userId;
 
-    const { icon, name, description, amount, source_id } =
+    const { icon, name, description, amount, source_id, images } =
       updateIncomeSchema.parse(req.body);
 
     const source = await Source.findOne({
@@ -150,7 +155,7 @@ const updateIncomeById = async (req: Request, res: Response) => {
 
     const income = await Income.findOneAndUpdate(
       { _id: id, user: userId },
-      { icon, name, description, amount, source: source._id },
+      { icon, name, description, amount, source: source._id, images },
       { new: true }
     );
 
@@ -175,6 +180,33 @@ const deleteIncomeById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
+
+    const income = await Income.findOne({ _id: id, user: userId });
+
+    if (!income) {
+      logger.error(`Income not found: ${id} by user: ${userId}`);
+      res.status(404).json({ message: "Income not found" });
+      return;
+    }
+
+    if (income.images) {
+      const results = await Promise.allSettled(
+        income.images.map(async (image) => {
+          const publicId = getPublicIdFromUrl(image);
+          if (publicId) {
+            return deleteImageFromCloudinary(publicId);
+          }
+        })
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          logger.error(
+            `Failed to delete image at index ${index}: ${result.reason}`
+          );
+        }
+      });
+    }
 
     const deletedIncome = await Income.findOneAndDelete({
       _id: id,
@@ -214,7 +246,14 @@ const downloadExcel = async (req: Request, res: Response) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Incomes");
 
-    worksheet.addRow(["Date", "Name", "Amount", "Source", "Description"]);
+    worksheet.addRow([
+      "Date",
+      "Name",
+      "Amount",
+      "Source",
+      "Description",
+      "Images",
+    ]);
     incomes.forEach((income) => {
       worksheet.addRow([
         income.date,
@@ -222,6 +261,7 @@ const downloadExcel = async (req: Request, res: Response) => {
         income.amount,
         (income.source as unknown as SourceDoc)?.name || "Uncategorized",
         income.description,
+        income.images?.join(", "),
       ]);
     });
 

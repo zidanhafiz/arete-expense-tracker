@@ -5,15 +5,18 @@ import {
   updateExpenseSchema,
 } from "../utils/expenseSchemas";
 import { logger } from "../config/logger";
-import { ZodError } from "zod";
 import Category, { CategoryDoc } from "../models/category.models";
 import mongoose from "mongoose";
 import { handleError } from "../utils/errorHandling";
 import ExcelJS from "exceljs";
+import {
+  deleteImageFromCloudinary,
+  getPublicIdFromUrl,
+} from "../utils/cloudinaryUtils";
 
 const createExpense = async (req: Request, res: Response) => {
   try {
-    const { icon, name, description, amount, category_id, date } =
+    const { icon, name, description, amount, category_id, date, images } =
       createExpenseSchema.parse(req.body);
 
     const userId = req.userId;
@@ -37,6 +40,7 @@ const createExpense = async (req: Request, res: Response) => {
       amount,
       category: category._id,
       date,
+      images,
     });
 
     logger.info(`Expense created: ${expense.id} by user: ${userId}`);
@@ -135,7 +139,7 @@ const updateExpenseById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
-    const { icon, name, description, amount, category_id, date } =
+    const { icon, name, description, amount, category_id, date, images } =
       updateExpenseSchema.parse(req.body);
 
     const category = await Category.findOne({
@@ -151,7 +155,7 @@ const updateExpenseById = async (req: Request, res: Response) => {
 
     const expense = await Expense.findOneAndUpdate(
       { _id: id, user: userId },
-      { icon, name, description, amount, category: category._id, date },
+      { icon, name, description, amount, category: category._id, date, images },
       { new: true }
     );
 
@@ -176,6 +180,33 @@ const deleteExpenseById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
+
+    const expense = await Expense.findOne({ _id: id, user: userId });
+
+    if (!expense) {
+      logger.error(`Expense not found: ${id} by user: ${userId}`);
+      res.status(404).json({ message: "Expense not found" });
+      return;
+    }
+
+    if (expense.images) {
+      const results = await Promise.allSettled(
+        expense.images.map(async (image) => {
+          const publicId = getPublicIdFromUrl(image);
+          if (publicId) {
+            return deleteImageFromCloudinary(publicId);
+          }
+        })
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          logger.error(
+            `Failed to delete image at index ${index}: ${result.reason}`
+          );
+        }
+      });
+    }
 
     const deletedExpense = await Expense.findOneAndDelete({
       _id: id,
@@ -218,7 +249,14 @@ const downloadExcel = async (req: Request, res: Response) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Expenses");
 
-    worksheet.addRow(["Date", "Name", "Amount", "Category", "Description"]);
+    worksheet.addRow([
+      "Date",
+      "Name",
+      "Amount",
+      "Category",
+      "Description",
+      "Images",
+    ]);
     expenses.forEach((expense) => {
       worksheet.addRow([
         expense.date,
@@ -226,6 +264,7 @@ const downloadExcel = async (req: Request, res: Response) => {
         expense.amount,
         (expense.category as unknown as CategoryDoc)?.name || "Uncategorized",
         expense.description,
+        expense.images?.join(", "),
       ]);
     });
 

@@ -8,6 +8,7 @@ type IIncome = {
   amount: number;
   source: Types.ObjectId;
   date: Date;
+  images: string[];
 };
 
 type IIncomeMethods = {};
@@ -23,6 +24,7 @@ const incomeSchema = new Schema<IIncome, IncomeModel, IIncomeMethods>(
     amount: { type: Number, required: true },
     source: { type: Schema.Types.ObjectId, ref: "Source", required: true },
     date: { type: Date, required: true },
+    images: { type: [String], required: false },
   },
   { timestamps: true }
 );

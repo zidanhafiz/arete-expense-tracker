@@ -79,6 +79,7 @@ export const updateUserSchema = z.object({
       message: "Password must be less than 100 characters long",
     })
     .optional(),
+  avatar: z.string().optional(),
 });
 
 export type UpdateUserSchema = z.infer<typeof updateUserSchema>;

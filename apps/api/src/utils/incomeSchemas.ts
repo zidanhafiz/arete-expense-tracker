@@ -18,6 +18,7 @@ export const createIncomeSchema = z.object({
     .string()
     .min(1, "Date is required")
     .max(300, "Date must be less than 300 characters"),
+  images: z.array(z.string()).optional(),
 });
 
 export const updateIncomeSchema = createIncomeSchema.partial();
