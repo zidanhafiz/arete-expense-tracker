@@ -117,7 +117,9 @@ describe("Source Controller", () => {
         skip: skipMock,
         limit: limitMock,
       });
-      (Source.countDocuments as jest.Mock).mockResolvedValue(sourcesArray.length);
+      (Source.countDocuments as jest.Mock).mockResolvedValue(
+        sourcesArray.length
+      );
 
       await sourceController.listSources(
         mockRequest as Request,
@@ -147,7 +149,9 @@ describe("Source Controller", () => {
         skip: skipMock,
         limit: limitMock,
       });
-      (Source.countDocuments as jest.Mock).mockResolvedValue(sourcesArray.length);
+      (Source.countDocuments as jest.Mock).mockResolvedValue(
+        sourcesArray.length
+      );
 
       await sourceController.listSources(
         mockRequest as Request,
@@ -376,4 +380,4 @@ describe("Source Controller", () => {
       });
     });
   });
-}); 
+});

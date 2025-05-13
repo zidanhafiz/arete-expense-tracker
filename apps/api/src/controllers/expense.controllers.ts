@@ -54,7 +54,14 @@ const createExpense = async (req: Request, res: Response) => {
 const listExpenses = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    const { page = 1, limit = 10, search = "", category = "" } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      category = "",
+      fromDate,
+      toDate,
+    } = req.query;
 
     const filter: any = { user: userId };
 
@@ -84,6 +91,12 @@ const listExpenses = async (req: Request, res: Response) => {
         catId = catDoc._id.toString();
       }
       filter.category = catId;
+    }
+
+    if (fromDate || toDate) {
+      filter.date = {};
+      if (fromDate) filter.date.$gte = new Date(fromDate as string);
+      if (toDate) filter.date.$lte = new Date(toDate as string);
     }
 
     const expenses = await Expense.find(filter)

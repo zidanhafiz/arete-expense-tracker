@@ -29,7 +29,9 @@ describe("Expense Controller", () => {
       amount: 20,
       category: "507f1f77bcf86cd799439011",
       date: "2024-03-20",
-      images: ["https://res.cloudinary.com/demo/image/upload/v1/avatar/image1.jpg"],
+      images: [
+        "https://res.cloudinary.com/demo/image/upload/v1/avatar/image1.jpg",
+      ],
       toJSON: function () {
         return this;
       },
@@ -61,8 +63,12 @@ describe("Expense Controller", () => {
     });
 
     // Mock cloudinary functions
-    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue("avatar/image1.jpg");
-    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(undefined);
+    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue(
+      "avatar/image1.jpg"
+    );
+    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(
+      undefined
+    );
   });
 
   describe("createExpense", () => {
@@ -285,6 +291,130 @@ describe("Expense Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "DB error",
       });
+    });
+
+    it("should filter expenses by date range", async () => {
+      const fromDate = "2023-01-01";
+      const toDate = "2023-12-31";
+      mockRequest.query = { fromDate, toDate };
+
+      const expensesArray = [mockExpense];
+      const populateMock = jest.fn().mockReturnThis();
+      const skipMock = jest.fn().mockReturnThis();
+      const limitMock = jest.fn().mockResolvedValue(expensesArray);
+
+      (Expense.find as jest.Mock).mockReturnValue({
+        populate: populateMock,
+        skip: skipMock,
+        limit: limitMock,
+      });
+
+      await expenseController.listExpenses(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(Expense.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        date: {
+          $gte: expect.any(Date),
+          $lte: expect.any(Date),
+        },
+      });
+
+      // Verify the Date objects created match our input strings
+      const findCall = (Expense.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.date.$gte.toISOString().split("T")[0]).toBe(fromDate);
+      expect(findCall.date.$lte.toISOString().split("T")[0]).toBe(toDate);
+
+      expect(populateMock).toHaveBeenCalledWith("category", "icon name");
+      expect(skipMock).toHaveBeenCalledWith(0);
+      expect(limitMock).toHaveBeenCalledWith(10);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Expenses listed successfully",
+        page: 1,
+        limit: 10,
+        total: expensesArray.length,
+        totalPages: 1,
+        expenses: expensesArray,
+      });
+    });
+
+    it("should filter expenses with only fromDate specified", async () => {
+      const fromDate = "2023-01-01";
+      mockRequest.query = { fromDate };
+
+      const expensesArray = [mockExpense];
+      const populateMock = jest.fn().mockReturnThis();
+      const skipMock = jest.fn().mockReturnThis();
+      const limitMock = jest.fn().mockResolvedValue(expensesArray);
+
+      (Expense.find as jest.Mock).mockReturnValue({
+        populate: populateMock,
+        skip: skipMock,
+        limit: limitMock,
+      });
+
+      await expenseController.listExpenses(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(Expense.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        date: {
+          $gte: expect.any(Date),
+        },
+      });
+
+      // Verify the Date object created matches our input string
+      const findCall = (Expense.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.date.$gte.toISOString().split("T")[0]).toBe(fromDate);
+      expect(findCall.date.$lte).toBeUndefined();
+
+      expect(populateMock).toHaveBeenCalledWith("category", "icon name");
+      expect(skipMock).toHaveBeenCalledWith(0);
+      expect(limitMock).toHaveBeenCalledWith(10);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should filter expenses with only toDate specified", async () => {
+      const toDate = "2023-12-31";
+      mockRequest.query = { toDate };
+
+      const expensesArray = [mockExpense];
+      const populateMock = jest.fn().mockReturnThis();
+      const skipMock = jest.fn().mockReturnThis();
+      const limitMock = jest.fn().mockResolvedValue(expensesArray);
+
+      (Expense.find as jest.Mock).mockReturnValue({
+        populate: populateMock,
+        skip: skipMock,
+        limit: limitMock,
+      });
+
+      await expenseController.listExpenses(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(Expense.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        date: {
+          $lte: expect.any(Date),
+        },
+      });
+
+      // Verify the Date object created matches our input string
+      const findCall = (Expense.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.date.$gte).toBeUndefined();
+      expect(findCall.date.$lte.toISOString().split("T")[0]).toBe(toDate);
+
+      expect(populateMock).toHaveBeenCalledWith("category", "icon name");
+      expect(skipMock).toHaveBeenCalledWith(0);
+      expect(limitMock).toHaveBeenCalledWith(10);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
     });
   });
 
@@ -514,7 +644,7 @@ describe("Expense Controller", () => {
   describe("deleteExpenseById", () => {
     it("should delete the expense and its images successfully", async () => {
       mockRequest.params = { id: mockExpense._id };
-      
+
       // Mock finding the expense first to get its images
       (Expense.findOne as jest.Mock).mockResolvedValue(mockExpense);
       (Expense.findOneAndDelete as jest.Mock).mockResolvedValue(mockExpense);
@@ -528,17 +658,17 @@ describe("Expense Controller", () => {
       expect(cloudinaryUtils.getPublicIdFromUrl).toHaveBeenCalledWith(
         mockExpense.images[0]
       );
-      
+
       // Check that we tried to delete the image
       expect(cloudinaryUtils.deleteImageFromCloudinary).toHaveBeenCalledWith(
         "avatar/image1.jpg"
       );
-      
+
       expect(Expense.findOneAndDelete).toHaveBeenCalledWith({
         _id: mockExpense._id,
         user: mockUserId,
       });
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Expense deleted successfully",
@@ -547,24 +677,26 @@ describe("Expense Controller", () => {
 
     it("should handle image deletion failures gracefully", async () => {
       mockRequest.params = { id: mockExpense._id };
-      
+
       // Mock finding the expense with multiple images
       const expenseWithMultipleImages = {
         ...mockExpense,
         images: [
           "https://res.cloudinary.com/demo/image/upload/v1/avatar/image1.jpg",
-          "https://res.cloudinary.com/demo/image/upload/v1/avatar/image2.jpg"
-        ]
+          "https://res.cloudinary.com/demo/image/upload/v1/avatar/image2.jpg",
+        ],
       };
-      
-      (Expense.findOne as jest.Mock).mockResolvedValue(expenseWithMultipleImages);
+
+      (Expense.findOne as jest.Mock).mockResolvedValue(
+        expenseWithMultipleImages
+      );
       (Expense.findOneAndDelete as jest.Mock).mockResolvedValue(mockExpense);
-      
+
       // Mock one successful deletion and one failed deletion
       (cloudinaryUtils.getPublicIdFromUrl as jest.Mock)
         .mockReturnValueOnce("avatar/image1.jpg")
         .mockReturnValueOnce("avatar/image2.jpg");
-      
+
       (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock)
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(new Error("Failed to delete image"));
@@ -579,7 +711,7 @@ describe("Expense Controller", () => {
         _id: mockExpense._id,
         user: mockUserId,
       });
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Expense deleted successfully",
@@ -605,7 +737,7 @@ describe("Expense Controller", () => {
 
     it("should handle server error", async () => {
       mockRequest.params = { id: mockExpense._id };
-      
+
       // Mock finding the expense first to get its images
       (Expense.findOne as jest.Mock).mockImplementation(() => {
         throw new Error("DB error");

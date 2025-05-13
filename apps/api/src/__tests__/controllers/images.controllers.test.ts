@@ -17,8 +17,7 @@ describe("Images Controller", () => {
     jest.clearAllMocks();
 
     // Create mock files
-    mockFiles = 
-    [
+    mockFiles = [
       {
         fieldname: "images",
         originalname: "test-image.jpg",

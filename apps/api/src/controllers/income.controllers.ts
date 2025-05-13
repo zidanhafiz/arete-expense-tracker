@@ -54,7 +54,14 @@ const createIncome = async (req: Request, res: Response) => {
 const listIncomes = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    const { page = 1, limit = 10, search = "", source = "" } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      source = "",
+      fromDate,
+      toDate,
+    } = req.query;
 
     const filter: any = { user: userId };
 
@@ -84,6 +91,12 @@ const listIncomes = async (req: Request, res: Response) => {
         sourceId = sourceDoc._id.toString();
       }
       filter.source = sourceId;
+    }
+
+    if (fromDate || toDate) {
+      filter.date = {};
+      if (fromDate) filter.date.$gte = new Date(fromDate as string);
+      if (toDate) filter.date.$lte = new Date(toDate as string);
     }
 
     const incomes = await Income.find(filter)

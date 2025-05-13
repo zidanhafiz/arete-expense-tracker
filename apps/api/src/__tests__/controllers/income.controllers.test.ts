@@ -29,7 +29,9 @@ describe("Income Controller", () => {
       amount: 5000,
       date: "2024-03-20",
       source: "507f1f77bcf86cd799439011",
-      images: ["https://res.cloudinary.com/demo/image/upload/v1/avatar/income1.jpg"],
+      images: [
+        "https://res.cloudinary.com/demo/image/upload/v1/avatar/income1.jpg",
+      ],
       toJSON: function () {
         return this;
       },
@@ -61,8 +63,12 @@ describe("Income Controller", () => {
     });
 
     // Mock cloudinary functions
-    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue("avatar/income1.jpg");
-    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(undefined);
+    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue(
+      "avatar/income1.jpg"
+    );
+    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(
+      undefined
+    );
   });
 
   describe("createIncome", () => {
@@ -276,6 +282,130 @@ describe("Income Controller", () => {
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "DB error",
       });
+    });
+
+    it("should filter incomes by date range", async () => {
+      const fromDate = "2023-01-01";
+      const toDate = "2023-12-31";
+      mockRequest.query = { fromDate, toDate };
+
+      const incomesArray = [mockIncome];
+      const populateMock = jest.fn().mockReturnThis();
+      const skipMock = jest.fn().mockReturnThis();
+      const limitMock = jest.fn().mockResolvedValue(incomesArray);
+
+      (Income.find as jest.Mock).mockReturnValue({
+        populate: populateMock,
+        skip: skipMock,
+        limit: limitMock,
+      });
+
+      await incomeController.listIncomes(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(Income.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        date: {
+          $gte: expect.any(Date),
+          $lte: expect.any(Date),
+        },
+      });
+
+      // Verify the Date objects created match our input strings
+      const findCall = (Income.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.date.$gte.toISOString().split("T")[0]).toBe(fromDate);
+      expect(findCall.date.$lte.toISOString().split("T")[0]).toBe(toDate);
+
+      expect(populateMock).toHaveBeenCalledWith("source");
+      expect(skipMock).toHaveBeenCalledWith(0);
+      expect(limitMock).toHaveBeenCalledWith(10);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: "Incomes listed successfully",
+        page: 1,
+        limit: 10,
+        total: incomesArray.length,
+        totalPages: 1,
+        incomes: incomesArray,
+      });
+    });
+
+    it("should filter incomes with only fromDate specified", async () => {
+      const fromDate = "2023-01-01";
+      mockRequest.query = { fromDate };
+
+      const incomesArray = [mockIncome];
+      const populateMock = jest.fn().mockReturnThis();
+      const skipMock = jest.fn().mockReturnThis();
+      const limitMock = jest.fn().mockResolvedValue(incomesArray);
+
+      (Income.find as jest.Mock).mockReturnValue({
+        populate: populateMock,
+        skip: skipMock,
+        limit: limitMock,
+      });
+
+      await incomeController.listIncomes(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(Income.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        date: {
+          $gte: expect.any(Date),
+        },
+      });
+
+      // Verify the Date object created matches our input string
+      const findCall = (Income.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.date.$gte.toISOString().split("T")[0]).toBe(fromDate);
+      expect(findCall.date.$lte).toBeUndefined();
+
+      expect(populateMock).toHaveBeenCalledWith("source");
+      expect(skipMock).toHaveBeenCalledWith(0);
+      expect(limitMock).toHaveBeenCalledWith(10);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should filter incomes with only toDate specified", async () => {
+      const toDate = "2023-12-31";
+      mockRequest.query = { toDate };
+
+      const incomesArray = [mockIncome];
+      const populateMock = jest.fn().mockReturnThis();
+      const skipMock = jest.fn().mockReturnThis();
+      const limitMock = jest.fn().mockResolvedValue(incomesArray);
+
+      (Income.find as jest.Mock).mockReturnValue({
+        populate: populateMock,
+        skip: skipMock,
+        limit: limitMock,
+      });
+
+      await incomeController.listIncomes(
+        mockRequest as Request,
+        mockResponse as Response
+      );
+
+      expect(Income.find).toHaveBeenCalledWith({
+        user: mockUserId,
+        date: {
+          $lte: expect.any(Date),
+        },
+      });
+
+      // Verify the Date object created matches our input string
+      const findCall = (Income.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.date.$gte).toBeUndefined();
+      expect(findCall.date.$lte.toISOString().split("T")[0]).toBe(toDate);
+
+      expect(populateMock).toHaveBeenCalledWith("source");
+      expect(skipMock).toHaveBeenCalledWith(0);
+      expect(limitMock).toHaveBeenCalledWith(10);
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
     });
   });
 
@@ -493,7 +623,7 @@ describe("Income Controller", () => {
   describe("deleteIncomeById", () => {
     it("should delete the income and its images successfully", async () => {
       mockRequest.params = { id: mockIncome._id };
-      
+
       // Mock finding the income first to get its images
       (Income.findOne as jest.Mock).mockResolvedValue(mockIncome);
       (Income.findOneAndDelete as jest.Mock).mockResolvedValue(mockIncome);
@@ -507,17 +637,17 @@ describe("Income Controller", () => {
       expect(cloudinaryUtils.getPublicIdFromUrl).toHaveBeenCalledWith(
         mockIncome.images[0]
       );
-      
+
       // Check that we tried to delete the image
       expect(cloudinaryUtils.deleteImageFromCloudinary).toHaveBeenCalledWith(
         "avatar/income1.jpg"
       );
-      
+
       expect(Income.findOneAndDelete).toHaveBeenCalledWith({
         _id: mockIncome._id,
         user: mockUserId,
       });
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Income deleted successfully",
@@ -526,24 +656,24 @@ describe("Income Controller", () => {
 
     it("should handle image deletion failures gracefully", async () => {
       mockRequest.params = { id: mockIncome._id };
-      
+
       // Mock finding the income with multiple images
       const incomeWithMultipleImages = {
         ...mockIncome,
         images: [
           "https://res.cloudinary.com/demo/image/upload/v1/avatar/income1.jpg",
-          "https://res.cloudinary.com/demo/image/upload/v1/avatar/income2.jpg"
-        ]
+          "https://res.cloudinary.com/demo/image/upload/v1/avatar/income2.jpg",
+        ],
       };
-      
+
       (Income.findOne as jest.Mock).mockResolvedValue(incomeWithMultipleImages);
       (Income.findOneAndDelete as jest.Mock).mockResolvedValue(mockIncome);
-      
+
       // Mock one successful deletion and one failed deletion
       (cloudinaryUtils.getPublicIdFromUrl as jest.Mock)
         .mockReturnValueOnce("avatar/income1.jpg")
         .mockReturnValueOnce("avatar/income2.jpg");
-      
+
       (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock)
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(new Error("Failed to delete image"));
@@ -558,7 +688,7 @@ describe("Income Controller", () => {
         _id: mockIncome._id,
         user: mockUserId,
       });
-      
+
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: "Income deleted successfully",
@@ -584,7 +714,7 @@ describe("Income Controller", () => {
 
     it("should handle server error", async () => {
       mockRequest.params = { id: mockIncome._id };
-      
+
       // Mock finding the income first to get its images
       (Income.findOne as jest.Mock).mockImplementation(() => {
         throw new Error("DB error");
@@ -703,6 +833,13 @@ describe("Income Controller", () => {
           $lte: expect.any(Date),
         },
       });
+
+      // Verify the Date objects created match our input strings
+      const findCall = (Income.find as jest.Mock).mock.calls[0][0];
+      expect(findCall.date.$gte.toISOString().split("T")[0]).toBe("2023-01-01");
+      expect(findCall.date.$lte.toISOString().split("T")[0]).toBe("2023-12-31");
+
+      expect(populateMock).toHaveBeenCalledWith("source");
     });
 
     it("should handle errors properly", async () => {

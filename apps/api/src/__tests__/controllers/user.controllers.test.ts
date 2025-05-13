@@ -38,7 +38,8 @@ describe("User Controller", () => {
       first_name: "John",
       last_name: "Doe",
       nickname: "johndoe",
-      avatar: "https://res.cloudinary.com/demo/image/upload/v1/avatar/user123.jpg",
+      avatar:
+        "https://res.cloudinary.com/demo/image/upload/v1/avatar/user123.jpg",
       email: "john@example.com",
       password: "hashedpassword123",
       comparePassword: jest.fn(),
@@ -81,9 +82,15 @@ describe("User Controller", () => {
     (generateRefreshToken as jest.Mock).mockReturnValue("mock-refresh-token");
 
     // Mock cloudinary functions
-    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue("avatar/user123.jpg");
-    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(undefined);
-    (cloudinaryUtils.uploadImagesToCloudinary as jest.Mock).mockResolvedValue(["avatar/newavatar123.jpg"]);
+    (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue(
+      "avatar/user123.jpg"
+    );
+    (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockResolvedValue(
+      undefined
+    );
+    (cloudinaryUtils.uploadImagesToCloudinary as jest.Mock).mockResolvedValue([
+      "avatar/newavatar123.jpg",
+    ]);
   });
 
   describe("registerUser", () => {
@@ -493,7 +500,7 @@ describe("User Controller", () => {
       jest.spyOn(updateUserSchema, "parse").mockReturnValue({});
 
       // Skip findById call as the controller short-circuits before it
-      
+
       // Execute
       await userController.updateUser(
         mockRequest as Request,
@@ -503,7 +510,7 @@ describe("User Controller", () => {
       // Assert
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        message: "At least one field must be provided"
+        message: "At least one field must be provided",
       });
     });
 
@@ -568,8 +575,12 @@ describe("User Controller", () => {
 
       // Assert
       expect(User.findById).toHaveBeenCalledWith(mockUserId);
-      expect(cloudinaryUtils.getPublicIdFromUrl).toHaveBeenCalledWith(mockUser.avatar);
-      expect(cloudinaryUtils.deleteImageFromCloudinary).toHaveBeenCalledWith("avatar/user123.jpg");
+      expect(cloudinaryUtils.getPublicIdFromUrl).toHaveBeenCalledWith(
+        mockUser.avatar
+      );
+      expect(cloudinaryUtils.deleteImageFromCloudinary).toHaveBeenCalledWith(
+        "avatar/user123.jpg"
+      );
       expect(User.findByIdAndDelete).toHaveBeenCalledWith(mockUserId);
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -583,7 +594,9 @@ describe("User Controller", () => {
       const userWithoutAvatar = { ...mockUser, avatar: null };
 
       (User.findById as jest.Mock).mockResolvedValue(userWithoutAvatar);
-      (User.findByIdAndDelete as jest.Mock).mockResolvedValue(userWithoutAvatar);
+      (User.findByIdAndDelete as jest.Mock).mockResolvedValue(
+        userWithoutAvatar
+      );
 
       // Execute
       await userController.deleteUser(
@@ -607,16 +620,20 @@ describe("User Controller", () => {
       mockRequest.userId = mockUserId;
 
       (User.findById as jest.Mock).mockResolvedValue(mockUser);
-      
+
       // Mock function to make it appear that deleteImageFromCloudinary throws an error
       // but in a way that doesn't prevent the test from continuing
-      (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue("avatar/user123.jpg");
-      (cloudinaryUtils.deleteImageFromCloudinary as jest.Mock).mockImplementation(() => {
+      (cloudinaryUtils.getPublicIdFromUrl as jest.Mock).mockReturnValue(
+        "avatar/user123.jpg"
+      );
+      (
+        cloudinaryUtils.deleteImageFromCloudinary as jest.Mock
+      ).mockImplementation(() => {
         // Throw error but catch it internally to let the test continue
         const error = new Error("Delete failed");
         return Promise.resolve(); // Return resolved promise to continue execution
       });
-      
+
       (User.findByIdAndDelete as jest.Mock).mockResolvedValue(mockUser);
 
       // Execute
