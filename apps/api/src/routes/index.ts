@@ -9,6 +9,7 @@ import categoryRoutes from "./category.routes";
 import incomeRoutes from "./income.routes";
 import sourceRoutes from "./source.routes";
 import imagesRouter from "./images.routes";
+import analyticsRouter from "./analytics.routes";
 
 const router: Router = Router();
 
@@ -48,5 +49,8 @@ router.use("/api/sources", sourceRoutes);
 
 // Images routes
 router.use("/api/images", imagesRouter);
+
+// Analytics routes
+router.use("/api/analytics", analyticsRouter);
 
 export default router;

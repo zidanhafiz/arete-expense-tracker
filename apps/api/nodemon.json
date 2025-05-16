@@ -1,0 +1,7 @@
+{
+  "execMap": {
+    "ts": "node --inspect -r ts-node/register"
+  },
+  "watch": ["src"],
+  "ext": "ts,json"
+}
