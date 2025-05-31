@@ -1,5 +1,6 @@
 import { Router } from "express";
 import incomeController from "../controllers/income.controllers";
+import "../swagger/income.swagger";
 
 const incomeRouter: Router = Router();
 

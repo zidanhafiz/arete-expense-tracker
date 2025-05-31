@@ -1,5 +1,6 @@
 import { Router } from "express";
 import expenseController from "../controllers/expense.controllers";
+import "../swagger/expense.swagger";
 
 const expenseRouter: Router = Router();
 

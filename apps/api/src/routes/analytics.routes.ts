@@ -1,5 +1,6 @@
 import { Router } from "express";
 import analyticController from "../controllers/analytic.controllers";
+import "../swagger/analytics.swagger";
 
 const analyticsRouter: Router = Router();
 

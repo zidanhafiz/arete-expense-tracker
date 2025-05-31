@@ -1,6 +1,7 @@
 import { Router } from "express";
 import userController from "../controllers/user.controllers";
 import { checkUser } from "../middlewares/user.middlewares";
+import "../swagger/user.swagger";
 
 const userRouter: Router = Router();
 

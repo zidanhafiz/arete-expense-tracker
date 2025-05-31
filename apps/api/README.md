@@ -9,6 +9,7 @@ A robust REST API for the Arete Expense Tracker application, built with Express.
 - [Prerequisites](#-prerequisites)
 - [Environment Variables](#-environment-variables)
 - [Getting Started](#-getting-started)
+- [API Documentation](#-api-documentation)
 - [Deployment](#-deployment)
 - [Testing](#-testing)
 - [Project Structure](#-project-structure)
@@ -19,6 +20,7 @@ A robust REST API for the Arete Expense Tracker application, built with Express.
 ## 🚀 Features
 
 - **User Management**
+
   - Authentication and authorization
   - User profile management
   - Secure password handling
@@ -26,6 +28,7 @@ A robust REST API for the Arete Expense Tracker application, built with Express.
   - Password reset functionality
 
 - **Expense Management**
+
   - Create, read, update, and delete expenses
   - Categorize expenses
   - Attach images to expenses
@@ -33,6 +36,7 @@ A robust REST API for the Arete Expense Tracker application, built with Express.
   - Bulk operations support
 
 - **Income Management**
+
   - Track multiple income sources
   - Income history and details
   - Source-wise income breakdown
@@ -40,6 +44,7 @@ A robust REST API for the Arete Expense Tracker application, built with Express.
   - Recurring income tracking
 
 - **Analytics & Reporting**
+
   - Expense summaries by category
   - Income summaries by source
   - Net balance calculation
@@ -66,6 +71,7 @@ A robust REST API for the Arete Expense Tracker application, built with Express.
 - Turbo for monorepo management
 - Winston for logging
 - Express-validator for validation
+- Swagger/OpenAPI for API documentation
 
 ## 📋 Prerequisites
 
@@ -93,28 +99,33 @@ NODE_ENV=development
 ## 🚀 Getting Started
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd apps/api
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp env.example .env
    # Edit .env with your configuration
    ```
 
 4. **Run development server**
+
    ```bash
    pnpm dev
    ```
 
 5. **Run tests**
+
    ```bash
    pnpm test
    ```
@@ -124,10 +135,52 @@ NODE_ENV=development
    pnpm build
    ```
 
+## 📚 API Documentation
+
+The API comes with comprehensive documentation using Swagger/OpenAPI specification. This provides an interactive interface to explore and test all available endpoints.
+
+### Accessing the Documentation
+
+Once the server is running, access the Swagger UI at:
+
+```
+http://localhost:8000/docs
+```
+
+### Features of the API Documentation
+
+- **Interactive UI**: Test API endpoints directly from the browser
+- **Request/Response Examples**: See example payloads for each endpoint
+- **Authentication**: Test secured endpoints with JWT authentication
+- **Schema Models**: View detailed data models for all resources
+- **Organized by Tags**: Endpoints are organized by resource type:
+  - Auth - User authentication and registration
+  - Users - User profile management
+  - Expenses - Expense tracking operations
+  - Categories - Expense categories management
+  - Incomes - Income tracking operations
+  - Sources - Income sources management
+  - Images - Image upload and management
+  - Analytics - Financial data analytics and reporting
+
+### Documentation Structure
+
+Each API endpoint includes:
+
+- Detailed description
+- Required parameters
+- Request body schema (when applicable)
+- Response codes and formats
+- Authentication requirements
+
+The documentation is maintained separately from the code logic in dedicated `.swagger.ts` files for improved maintainability.
+
 ## 🚀 Deployment
 
 ### Production Build
+
 1. Build the application:
+
    ```bash
    pnpm build
    ```
@@ -138,6 +191,7 @@ NODE_ENV=development
    ```
 
 ### Docker Deployment
+
 ```dockerfile
 # Dockerfile included in the repository
 docker build -t arete-expense-api .
@@ -166,11 +220,13 @@ src/
 ├── config/         # Configuration files
 │   ├── database.ts
 │   ├── cloudinary.ts
+│   ├── swagger.ts
 │   └── logger.ts
 ├── controllers/    # Route controllers
 │   ├── auth.controllers.ts
 │   ├── expense.controllers.ts
-│   └── income.controllers.ts
+│   ├── income.controllers.ts
+│   └── images.controllers.ts
 ├── middlewares/    # Custom middlewares
 │   ├── auth.middleware.ts
 │   └── validation.middleware.ts
@@ -180,7 +236,17 @@ src/
 │   └── income.models.ts
 ├── routes/         # API routes
 │   ├── auth.routes.ts
-│   └── expense.routes.ts
+│   ├── expense.routes.ts
+│   └── images.routes.ts
+├── swagger/        # API documentation
+│   ├── auth.swagger.ts
+│   ├── user.swagger.ts
+│   ├── expense.swagger.ts
+│   ├── income.swagger.ts
+│   ├── category.swagger.ts
+│   ├── source.swagger.ts
+│   ├── images.swagger.ts
+│   └── analytics.swagger.ts
 ├── types/         # TypeScript type definitions
 ├── utils/         # Utility functions
 └── __tests__/     # Test files
@@ -189,6 +255,7 @@ src/
 ## 🔍 Monitoring
 
 The API includes:
+
 - Winston logging
 - Performance monitoring
 - Error tracking
@@ -203,6 +270,7 @@ The API includes:
 5. Open a Pull Request
 
 ### Coding Standards
+
 - Follow TypeScript best practices
 - Write unit tests for new features
 - Update documentation
@@ -213,6 +281,7 @@ The API includes:
 This project is licensed under the MIT License.
 
 ### What you can do:
+
 - ✅ Commercial use
 - ✅ Modify the code
 - ✅ Distribute the code
@@ -220,10 +289,12 @@ This project is licensed under the MIT License.
 - ✅ Use in closed source projects
 
 ### Requirements:
+
 - ℹ️ Include the original license
 - ℹ️ Include copyright notice
 
 ### Limitations:
+
 - ❌ No liability
 - ❌ No warranty
 
@@ -232,13 +303,14 @@ The full license text can be found in the [LICENSE](LICENSE) file.
 ## 📞 Support
 
 For support, please contact:
+
 - Email: hrofiyani@gmail.com
 
 ---
 
 <div align="center">
 
-**[Website](https://arete-expense-tracker.com)** • 
+**[Website](https://arete-expense-tracker.com)** •
 **[Documentation](https://docs.arete-expense-tracker.com)**
 
 Made with ❤️ by Zidan

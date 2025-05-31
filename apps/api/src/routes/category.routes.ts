@@ -1,5 +1,6 @@
 import { Router } from "express";
 import categoryController from "../controllers/category.controllers";
+import "../swagger/category.swagger";
 
 const categoryRouter: Router = Router();
 

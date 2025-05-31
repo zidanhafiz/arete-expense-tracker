@@ -1,5 +1,6 @@
 import { Router } from "express";
 import sourceController from "../controllers/source.controllers";
+import "../swagger/source.swagger";
 
 const sourceRouter: Router = Router();
 
