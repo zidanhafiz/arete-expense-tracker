@@ -10,6 +10,8 @@ import incomeRoutes from "./income.routes";
 import sourceRoutes from "./source.routes";
 import imagesRouter from "./images.routes";
 import analyticsRouter from "./analytics.routes";
+import { swaggerDocs } from "../config/swagger";
+import swaggerUi from "swagger-ui-express";
 
 const router: Router = Router();
 
@@ -25,6 +27,9 @@ router.get("/health", (req: Request, res: Response) => {
 
 // Serve static files from uploads folder
 router.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// Swagger routes
+router.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Auth routes
 router.use("/auth", authRoutes);

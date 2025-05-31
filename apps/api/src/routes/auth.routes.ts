@@ -1,6 +1,7 @@
 import { Router } from "express";
 import userController from "../controllers/user.controllers";
 import { checkJwt } from "../middlewares/auth.middlewares";
+import "../swagger/auth.swagger";
 
 const authRouter: Router = Router();
 
